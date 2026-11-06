@@ -52,6 +52,7 @@ export {
   drawPanel,
   drawProgressBar,
   drawRings,
+  drawSparkline,
   drawStatusDot,
   drawText,
   fontStack,

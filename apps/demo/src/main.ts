@@ -16,10 +16,17 @@ import {
   defineContainerGrid,
   type GridSectionId,
 } from '@widgets/container-grid';
+import {
+  TIMELINE_SECTIONS,
+  UptimeTimelineElement,
+  defineUptimeTimeline,
+  type TimelineSectionId,
+} from '@widgets/uptime-timeline';
 
 defineServerMonitor();
 defineLogStream();
 defineContainerGrid();
+defineUptimeTimeline();
 
 const METRICS_WS = 'ws://localhost:4310/stream';
 const METRICS_HTTP = 'http://localhost:4310/api/v1/server/metrics';
@@ -29,26 +36,32 @@ const LOGS_SSE = 'http://localhost:4310/api/v1/logs/events';
 const CONTAINERS_WS = 'ws://localhost:4310/containers/stream';
 const CONTAINERS_HTTP = 'http://localhost:4310/api/v1/containers';
 const CONTAINERS_SSE = 'http://localhost:4310/api/v1/containers/events';
+const UPTIME_WS = 'ws://localhost:4310/uptime/stream';
+const UPTIME_HTTP = 'http://localhost:4310/api/v1/uptime';
+const UPTIME_SSE = 'http://localhost:4310/api/v1/uptime/events';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const monitor = $<ServerMonitorElement>('monitor');
 const logs = $<LogStreamElement>('logs');
 const fleet = $<ContainerGridElement>('fleet');
+const reliability = $<UptimeTimelineElement>('reliability');
 const eventsList = $<HTMLUListElement>('events');
 const toggles = $<HTMLDivElement>('toggles');
 const snippet = $<HTMLElement>('snippet');
 const controlsMetrics = $('controls-metrics');
 const controlsLogs = $('controls-logs');
 const controlsContainers = $('controls-containers');
+const controlsUptime = $('controls-uptime');
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('.tab')];
 
-type WidgetKind = 'metrics' | 'logs' | 'containers';
+type WidgetKind = 'metrics' | 'logs' | 'containers' | 'uptime';
 let active: WidgetKind = 'metrics';
 
 const metricSections: Partial<Record<SectionId, boolean>> = {};
 const logSections: Partial<Record<LogSectionId, boolean>> = {};
 const containerSections: Partial<Record<GridSectionId, boolean>> = {};
+const uptimeSections: Partial<Record<TimelineSectionId, boolean>> = {};
 
 const metricControls = {
   source: $<HTMLSelectElement>('m-source'),
@@ -65,6 +78,15 @@ const containerControls = {
   locale: $<HTMLSelectElement>('c-locale'),
   sort: $<HTMLSelectElement>('c-sort'),
   attention: $<HTMLSelectElement>('c-attention'),
+};
+
+const uptimeControls = {
+  source: $<HTMLSelectElement>('u-source'),
+  theme: $<HTMLSelectElement>('u-theme'),
+  columns: $<HTMLSelectElement>('u-columns'),
+  locale: $<HTMLSelectElement>('u-locale'),
+  window: $<HTMLSelectElement>('u-window'),
+  attention: $<HTMLSelectElement>('u-attention'),
 };
 
 const logControls = {
@@ -201,6 +223,43 @@ function applyContainers(): void {
   });
 }
 
+// ── Uptime timeline ──────────────────────────────────────────────────────
+
+function uptimeSource(): Record<string, unknown> {
+  switch (uptimeControls.source.value) {
+    case 'ws':
+      return { transport: 'websocket', url: UPTIME_WS };
+    case 'sse':
+      return { transport: 'sse', url: UPTIME_SSE };
+    case 'http':
+      return { transport: 'http', url: UPTIME_HTTP, intervalMs: 5000 };
+    case 'statuspage':
+      return { transport: 'http', url: `${UPTIME_HTTP}?shape=statuspage`, intervalMs: 5000 };
+    case 'mockIncident':
+      return { transport: 'mock', intervalMs: 5000, size: 8, incident: true };
+    default:
+      return { transport: 'mock', intervalMs: 5000, size: 8 };
+  }
+}
+
+function applyUptime(): void {
+  reliability.setConfig({
+    source: uptimeSource() as never,
+    theme: uptimeControls.theme.value === 'light' ? 'light' : 'dark',
+    locale: uptimeControls.locale.value,
+    windowDays: Number(uptimeControls.window.value),
+    ...(uptimeControls.columns.value === 'auto'
+      ? {}
+      : { columns: Number(uptimeControls.columns.value) as 1 | 2 }),
+    filters: { ...reliability.filter, attentionOnly: uptimeControls.attention.value === 'true' },
+    sections: uptimeSections,
+    tooltips: true,
+    onAction: (action, payload) =>
+      pushEvent(`uptime action · ${action}${payload ? ` · ${JSON.stringify(payload)}` : ''}`),
+    onError: (error) => pushEvent(`uptime error · ${error.message}`),
+  });
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 const SNIPPETS: Record<WidgetKind, string> = {
@@ -230,13 +289,34 @@ const SNIPPETS: Record<WidgetKind, string> = {
 
 <script type="module"
   src="./log-stream.global.js"></script>`,
+  uptime: `<uptime-timeline
+  src="ws://localhost:4310/uptime/stream"
+  transport="websocket"
+  window="90"
+></uptime-timeline>
+
+<script type="module"
+  src="./uptime-timeline.global.js"></script>`,
 };
 
 function renderSectionToggles(): void {
   toggles.innerHTML = '';
   const ids: readonly string[] =
-    active === 'metrics' ? ALL_SECTIONS : active === 'logs' ? LOG_SECTIONS : GRID_SECTIONS;
-  const state = active === 'metrics' ? metricSections : active === 'logs' ? logSections : containerSections;
+    active === 'metrics'
+      ? ALL_SECTIONS
+      : active === 'logs'
+        ? LOG_SECTIONS
+        : active === 'containers'
+          ? GRID_SECTIONS
+          : TIMELINE_SECTIONS;
+  const state =
+    active === 'metrics'
+      ? metricSections
+      : active === 'logs'
+        ? logSections
+        : active === 'containers'
+          ? containerSections
+          : uptimeSections;
   for (const id of ids) {
     const label = document.createElement('label');
     const input = document.createElement('input');
@@ -248,7 +328,8 @@ function renderSectionToggles(): void {
       (state as Record<string, boolean>)[id] = input.checked;
       if (active === 'metrics') applyMetrics();
       else if (active === 'logs') applyLogs();
-      else applyContainers();
+      else if (active === 'containers') applyContainers();
+      else applyUptime();
     });
   }
 }
@@ -263,9 +344,11 @@ function setActive(next: WidgetKind): void {
   controlsMetrics.hidden = next !== 'metrics';
   controlsLogs.hidden = next !== 'logs';
   controlsContainers.hidden = next !== 'containers';
+  controlsUptime.hidden = next !== 'uptime';
   monitor.hidden = next !== 'metrics';
   logs.hidden = next !== 'logs';
   fleet.hidden = next !== 'containers';
+  reliability.hidden = next !== 'uptime';
   snippet.querySelector('code')!.textContent = SNIPPETS[next];
   renderSectionToggles();
 
@@ -275,9 +358,12 @@ function setActive(next: WidgetKind): void {
   } else if (next === 'logs') {
     applyLogs();
     pushEvent('switched to log-stream');
-  } else {
+  } else if (next === 'containers') {
     applyContainers();
     pushEvent('switched to container-grid');
+  } else {
+    applyUptime();
+    pushEvent('switched to uptime-timeline');
   }
 }
 
@@ -318,6 +404,19 @@ fleet.addEventListener('widget-transition', (event) => {
   pushEvent(`grid transition · ${payload.container.name} ${payload.from} → ${payload.to}`);
 });
 
+reliability.addEventListener('widget-snapshot', (event) => {
+  const snapshot = (event as CustomEvent).detail as { services: unknown[]; incidents: unknown[] };
+  pushEvent(`uptime · status page (${snapshot.services.length} services, ${snapshot.incidents.length} incidents)`);
+});
+reliability.addEventListener('widget-transition', (event) => {
+  const payload = (event as CustomEvent).detail as { service: { name: string }; from: string; to: string };
+  pushEvent(`uptime transition · ${payload.service.name} ${payload.from} → ${payload.to}`);
+});
+reliability.addEventListener('widget-incident', (event) => {
+  const payload = (event as CustomEvent).detail as { incident: { title: string }; change: string };
+  pushEvent(`uptime incident · ${payload.change} · ${payload.incident.title}`);
+});
+
 // ── Control wiring ────────────────────────────────────────────────────────
 
 for (const control of Object.values(metricControls)) {
@@ -336,6 +435,11 @@ for (const control of Object.values(logControls)) {
 for (const control of Object.values(containerControls)) {
   control.addEventListener('change', () => {
     if (active === 'containers') applyContainers();
+  });
+}
+for (const control of Object.values(uptimeControls)) {
+  control.addEventListener('change', () => {
+    if (active === 'uptime') applyUptime();
   });
 }
 
@@ -367,8 +471,23 @@ setSelect(containerControls.locale, params.get('c-locale'));
 setSelect(containerControls.sort, params.get('c-sort'));
 setSelect(containerControls.attention, params.get('c-attention'));
 
+setSelect(uptimeControls.source, params.get('u-source'));
+setSelect(uptimeControls.theme, params.get('u-theme'));
+setSelect(uptimeControls.columns, params.get('u-columns'));
+setSelect(uptimeControls.locale, params.get('u-locale'));
+setSelect(uptimeControls.window, params.get('u-window'));
+setSelect(uptimeControls.attention, params.get('u-attention'));
+
 const requested = params.get('widget');
-setActive(requested === 'logs' ? 'logs' : requested === 'containers' ? 'containers' : 'metrics');
+setActive(
+  requested === 'logs'
+    ? 'logs'
+    : requested === 'containers'
+      ? 'containers'
+      : requested === 'uptime'
+        ? 'uptime'
+        : 'metrics',
+);
 pushEvent('playground ready · pick a data source to stream live data');
 
 

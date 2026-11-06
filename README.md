@@ -8,7 +8,7 @@ One codebase → web, Windows, Android, iOS. Canvas-rendered, framework-free, ac
 
 <img src="docs/images/server-monitor-dark.png" alt="Server monitor widget — dark theme" width="880" />
 
-<sub>Widgets: <code>&lt;server-monitor&gt;</code> — server resource dashboard (<a href="docs/images/server-monitor-light.png">light</a>, <a href="docs/images/server-monitor-mobile.png">single column</a>) · <code>&lt;log-stream&gt;</code> — virtualised log viewer (<a href="docs/images/log-stream-burst.png">incident burst</a>, <a href="docs/images/log-stream-mobile.png">mobile</a>) · <code>&lt;container-grid&gt;</code> — pod/workload fleet (<a href="docs/images/container-grid-mobile.png">mobile</a>)</sub>
+<sub>Widgets: <code>&lt;server-monitor&gt;</code> — server resource dashboard (<a href="docs/images/server-monitor-light.png">light</a>, <a href="docs/images/server-monitor-mobile.png">single column</a>) · <code>&lt;log-stream&gt;</code> — virtualised log viewer (<a href="docs/images/log-stream-burst.png">incident burst</a>, <a href="docs/images/log-stream-mobile.png">mobile</a>) · <code>&lt;container-grid&gt;</code> — pod/workload fleet (<a href="docs/images/container-grid-mobile.png">mobile</a>) · <code>&lt;uptime-timeline&gt;</code> — availability heatmap, SLOs and incidents (<a href="docs/images/uptime-timeline-light.png">light</a>, <a href="docs/images/uptime-timeline-mobile.png">mobile</a>)</sub>
 
 </div>
 
@@ -24,7 +24,7 @@ other route — **one widget implementation, four+ host environments**:
 | --- | --- | --- |
 | Data + domain logic | [`@widgets/core`](packages/core) | Node, browser, React Native, native bridges (no DOM access) |
 | Shared canvas kit | [`@widgets/render`](packages/render) | any renderer: geometry, hit-testing, glyphs, primitives, a test canvas double |
-| Widgets (rendering + interaction) | [`@widgets/server-monitor`](packages/server-monitor) · [`@widgets/log-stream`](packages/log-stream) · [`@widgets/container-grid`](packages/container-grid) | `<server-monitor>` / `<log-stream>` / `<container-grid>` web components, canvas 2D |
+| Widgets (rendering + interaction) | [`@widgets/server-monitor`](packages/server-monitor) · [`@widgets/log-stream`](packages/log-stream) · [`@widgets/container-grid`](packages/container-grid) · [`@widgets/uptime-timeline`](packages/uptime-timeline) | `<server-monitor>` / `<log-stream>` / `<container-grid>` / `<uptime-timeline>` web components, canvas 2D |
 | Native hosts | [`platforms/`](platforms) | WinUI/WebView2, Android WebView, WKWebView, React Native, Flutter |
 
 Because the visual layer is a **web component painted on canvas inside a WebView**, every host
@@ -33,7 +33,7 @@ layer stays transport-agnostic (`WebSocket`, `SSE`, HTTP polling, or a snapshot 
 
 ## Features
 
-- **Three widgets, one platform** — `<server-monitor>` (CPU / memory / disk / network dashboard), `<log-stream>` (virtualised log viewer with severity filtering) and `<container-grid>` (responsive pod/workload fleet with capacity rollups).
+- **Four widgets, one platform** — `<server-monitor>` (CPU / memory / disk / network dashboard), `<log-stream>` (virtualised log viewer with severity filtering), `<container-grid>` (responsive pod/workload fleet with capacity rollups) and `<uptime-timeline>` (availability heatmap with SLO/error-budget tracking and an incident log).
 - **Live by design** — WebSocket, Server-Sent Events, HTTP polling and in-process mock streams behind one interface.
 - **Self-healing connections** — exponential backoff with jitter, heartbeats, visibility-aware polling, control-frame suppression.
 - **Tolerant ingestion** — accepts canonical snapshots *or* flat/snake_case payloads (`cpu_usage`, `memory_total`, `severity`, `msg`, `container`, Kubernetes `items` with quantity strings …) and refuses control frames that would blank a view.
@@ -43,7 +43,7 @@ layer stays transport-agnostic (`WebSocket`, `SSE`, HTTP polling, or a snapshot 
 - **Responsive layout engine** — two columns above the breakpoint, single column below, sections dropped by priority when height is scarce (pure maths, unit-tested).
 - **Accessible & keyboard operable** — canvas exposed via `role="img"`/`role="log"`/`role="grid"` + live regions, arrow-key navigation (2D in the grid), `/` to search, space to pause the log tail.
 - **Zero runtime dependencies** — no chart library, no framework, ~76 KB minified IIFE per widget including the data layer.
-- **Tested** — 185 unit tests over transports, normalisation, metric/log/container stores, geometry, layouts, virtualisation, view models, renderers and element lifecycles.
+- **Tested** — 230 unit tests over transports, normalisation, metric/log/container/uptime stores, geometry, layouts, virtualisation, view models, renderers and element lifecycles.
 
 ## Quick start
 
@@ -120,8 +120,9 @@ packages/
   server-monitor/      @widgets/server-monitor — <server-monitor> element, layout engine, canvas renderers
   log-stream/          @widgets/log-stream — <log-stream> element, virtualised list, filters, histogram, inspector
   container-grid/      @widgets/container-grid — <container-grid> element, card grid, capacity rollups, inspector
+  uptime-timeline/     @widgets/uptime-timeline — <uptime-timeline> element, availability heatmap, SLO + incident panels
 apps/
-  mock-server/         synthetic metrics, logs and container fleets over HTTP / SSE / WebSocket
+  mock-server/         synthetic metrics, logs, container fleets and status pages over HTTP / SSE / WebSocket
   demo/                Vite playground (widget tabs, source switch, theme, locale, section toggles)
 platforms/             web · windows · android · ios · react-native · flutter host shells
 scripts/               bundle smoke test for the shipped IIFE artifacts
@@ -135,9 +136,9 @@ docs/                  architecture, design system, embedding and widget-authori
 | `npm run build` | Builds `core` → `render` → the three widget packages (ESM + dts + IIFE bundles). |
 | `npm test` | Runs the full Vitest suite. |
 | `npm run typecheck` | Type-checks every package and app. |
-| `npm run mock` | Starts the synthetic data server on `:4310` (metrics, logs, containers). |
+| `npm run mock` | Starts the synthetic data server on `:4310` (metrics, logs, containers, uptime). |
 | `npm run demo` | Starts the Vite playground on `:5173`. |
-| `node scripts/serve-bundle.mjs --widget logs` | Serves a shipped bundle with a harness (bundle smoke test). |
+| `node scripts/serve-bundle.mjs --widget uptime` | Serves a shipped bundle with a harness (bundle smoke test). |
 
 ## Documentation
 
@@ -155,7 +156,9 @@ docs/                  architecture, design system, embedding and widget-authori
 - [x] `container-grid` — Kubernetes pod / service health cards
   - [x] data layer: `ContainerInfo` contracts, Kubernetes `items`/quantity normalisation, `ContainerStore` with health transitions, sparkline history and capacity rollups
   - [x] widget: responsive card grid, phase/namespace/attention filters, 2D keyboard navigation, inspector, capacity + namespace analytics
-- [ ] `uptime-timeline` — incidents and SLA heatmap
+- [x] `uptime-timeline` — incidents and SLA heatmap
+  - [x] data layer: `UptimeService`/`UptimeIncident` contracts, Statuspage-style normalisation (component `history` codes), `UptimeStore` with MTTR/MTBF and per-day availability
+  - [x] widget: 90 day availability heatmap, SLO/error-budget panel, incident log with update trails, 2D-free row navigation
 - [ ] Native renderers (Compose / SwiftUI) reusing `buildViewModel()` / `buildLogViewModel()` / `buildContainerGridViewModel()`
 - [x] Platform work: shared canvas kit extracted to `@widgets/render`, transports and source resolution generalised over any snapshot type
 

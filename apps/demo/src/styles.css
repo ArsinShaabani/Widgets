@@ -157,14 +157,16 @@ main {
 
 server-monitor,
 log-stream,
-container-grid {
+container-grid,
+uptime-timeline {
   width: 100%;
   height: 100%;
 }
 
 server-monitor[hidden],
 log-stream[hidden],
-container-grid[hidden] {
+container-grid[hidden],
+uptime-timeline[hidden] {
   display: none;
 }
 

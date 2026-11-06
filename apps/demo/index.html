@@ -23,6 +23,7 @@
         </button>
         <button class="tab" data-widget="logs" role="tab" aria-selected="false">Log stream</button>
         <button class="tab" data-widget="containers" role="tab" aria-selected="false">Container grid</button>
+        <button class="tab" data-widget="uptime" role="tab" aria-selected="false">Uptime timeline</button>
       </nav>
     </header>
 
@@ -185,11 +186,69 @@
       </label>
     </section>
 
+
+    <section class="controls" id="controls-uptime" hidden>
+      <label>
+        <span>Data source</span>
+        <select id="u-source">
+          <option value="mock" selected>Mock status page (in-process)</option>
+          <option value="mockIncident">Mock · open incident</option>
+          <option value="ws">WebSocket :4310/uptime/stream</option>
+          <option value="sse">Server-Sent Events</option>
+          <option value="http">HTTP snapshots</option>
+          <option value="statuspage">HTTP Statuspage shape</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Theme</span>
+        <select id="u-theme">
+          <option value="dark" selected>Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Columns</span>
+        <select id="u-columns">
+          <option value="auto" selected>Responsive</option>
+          <option value="2">Two columns</option>
+          <option value="1">Single column</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Locale</span>
+        <select id="u-locale">
+          <option value="en" selected>English</option>
+          <option value="fa">فارسی</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Window</span>
+        <select id="u-window">
+          <option value="30">30 days</option>
+          <option value="60">60 days</option>
+          <option value="90" selected>90 days</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Focus</span>
+        <select id="u-attention">
+          <option value="false" selected>Everything</option>
+          <option value="true">Needs attention only</option>
+        </select>
+      </label>
+    </section>
+
     <main>
       <section class="stage" id="stage">
         <server-monitor id="monitor"></server-monitor>
         <log-stream id="logs" hidden></log-stream>
         <container-grid id="fleet" hidden></container-grid>
+        <uptime-timeline id="reliability" hidden></uptime-timeline>
       </section>
 
       <aside class="side">

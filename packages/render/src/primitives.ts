@@ -304,3 +304,46 @@ export function wrapText(
   return lines;
 }
 
+/**
+ * Minimal sparkline with an area fill, used by the container cards and the
+ * uptime inspector to show a short metric/timeline history.
+ */
+export function drawSparkline(
+  ctx: Ctx,
+  rect: Rect,
+  values: readonly number[],
+  color: string,
+  theme: ThemeTokens,
+): void {
+  if (values.length < 2 || rect.width <= 4 || rect.height <= 2) return;
+  const max = Math.max(...values, 1);
+  const stepX = rect.width / (values.length - 1);
+  const scaleY = (value: number) => rect.y + rect.height - (clamp(value, 0, max) / max) * rect.height;
+
+  ctx.beginPath();
+  ctx.moveTo(rect.x, rect.y + rect.height);
+  values.forEach((value, index) => ctx.lineTo(rect.x + stepX * index, scaleY(value)));
+  ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
+  ctx.closePath();
+  ctx.fillStyle = withAlpha(color, 0.16);
+  ctx.fill();
+
+  ctx.beginPath();
+  values.forEach((value, index) => {
+    const x = rect.x + stepX * index;
+    const y = scaleY(value);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = withAlpha(color, 0.9);
+  ctx.lineWidth = 1.4;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(rect.x, rect.y + rect.height);
+  ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
+  ctx.strokeStyle = theme.border;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}

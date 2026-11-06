@@ -4,6 +4,7 @@ import {
   drawChip,
   drawPanel,
   drawProgressBar,
+  drawSparkline,
   drawStatusDot,
   drawText,
   roundRectPath,
@@ -12,6 +13,8 @@ import {
   type Rect,
 } from '@widgets/render';
 import type { GridGeometry } from '../layout';
+
+export { drawSparkline } from '@widgets/render';
 import type { ContainerCard, ContainerGridViewModel } from '../view-model';
 
 /**
@@ -273,46 +276,6 @@ function drawMetricRow(ctx: Ctx, options: MetricRowOptions): void {
   });
 }
 
-/** Minimal sparkline with an area fill under the CPU history. */
-export function drawSparkline(
-  ctx: Ctx,
-  rect: Rect,
-  values: readonly number[],
-  color: string,
-  theme: ThemeTokens,
-): void {
-  if (values.length < 2 || rect.width <= 4) return;
-  const max = Math.max(100, ...values);
-  const stepX = rect.width / (values.length - 1);
-  const scaleY = (value: number) => rect.y + rect.height - (Math.max(0, value) / max) * rect.height;
-
-  ctx.beginPath();
-  ctx.moveTo(rect.x, rect.y + rect.height);
-  values.forEach((value, index) => ctx.lineTo(rect.x + stepX * index, scaleY(value)));
-  ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
-  ctx.closePath();
-  ctx.fillStyle = withAlpha(color, 0.16);
-  ctx.fill();
-
-  ctx.beginPath();
-  values.forEach((value, index) => {
-    const x = rect.x + stepX * index;
-    const y = scaleY(value);
-    if (index === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.strokeStyle = withAlpha(color, 0.9);
-  ctx.lineWidth = 1.4;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(rect.x, rect.y + rect.height);
-  ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
-  ctx.strokeStyle = theme.border;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-}
 
 /** Proportional scrollbar for the grid. */
 function drawScrollbar(

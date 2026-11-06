@@ -18,8 +18,10 @@ import {
   createMockContainerSnapshot,
   createMockLogSnapshot,
   createMockSnapshot,
+  createMockUptimeSnapshot,
   type ContainerSnapshot,
   type LogSnapshot,
+  type UptimeSnapshot,
   type WidgetSnapshot,
 } from '@widgets/core';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -28,12 +30,14 @@ const PORT = Number(process.env.PORT ?? 4310);
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 1000);
 const LOG_INTERVAL_MS = Number(process.env.LOG_INTERVAL_MS ?? 1200);
 const CONTAINER_INTERVAL_MS = Number(process.env.CONTAINER_INTERVAL_MS ?? 3000);
+const UPTIME_INTERVAL_MS = Number(process.env.UPTIME_INTERVAL_MS ?? 5000);
 const HOSTNAME = process.env.HOSTNAME_LABEL ?? 'prod-edge-01';
 const CPU_BASELINE = Number(process.env.CPU_BASELINE ?? 52);
 
 let tick = 0;
 let logTick = 0;
 let containerTick = 0;
+let uptimeTick = 0;
 
 /** Full canonical snapshot, refreshed on the server clock. */
 function snapshot(): WidgetSnapshot {
@@ -65,6 +69,17 @@ function containerBatch(size = 24): ContainerSnapshot {
     seed: 11,
     size,
     elapsedSeconds: containerTick * (CONTAINER_INTERVAL_MS / 1000),
+  });
+}
+
+/** One status-page snapshot; the incident window opens on every third batch. */
+function uptimeBatch(size = 8): UptimeSnapshot {
+  uptimeTick += 1;
+  return createMockUptimeSnapshot({
+    seed: 9,
+    size,
+    windowDays: 90,
+    incident: uptimeTick % 3 === 0,
   });
 }
 
@@ -179,6 +194,68 @@ const server = createServer((request: IncomingMessage, response: ServerResponse)
     return;
   }
 
+  if (url.pathname === '/api/v1/uptime') {
+    const snapshot = uptimeBatch();
+    if (url.searchParams.get('shape') === 'statuspage') {
+      // Statuspage style: components with code histories + incident_updates.
+      json(response, 200, {
+        components: snapshot.services.map((service) => ({
+          id: service.id,
+          name: service.name,
+          group: { name: service.group ?? 'core' },
+          status: service.state,
+          uptime: service.uptime,
+          slo: service.sloTarget,
+          history: service.days
+            .map((day) =>
+              day.state === 'operational'
+                ? 'O'
+                : day.state === 'degraded'
+                  ? 'D'
+                  : day.state === 'partial_outage'
+                    ? 'P'
+                    : day.state === 'maintenance'
+                      ? 'S'
+                      : 'M',
+            )
+            .join(''),
+        })),
+        incidents: snapshot.incidents.map((incident) => ({
+          id: incident.id,
+          name: incident.title,
+          impact: incident.severity,
+          status: incident.state,
+          created_at: new Date(incident.startedAt).toISOString(),
+          ...(incident.resolvedAt ? { resolved_at: new Date(incident.resolvedAt).toISOString() } : {}),
+          components: incident.services.map((id) => ({ id })),
+          incident_updates: incident.updates.map((update) => ({
+            status: update.state,
+            body: update.message,
+            created_at: new Date(update.at).toISOString(),
+          })),
+        })),
+      });
+      return;
+    }
+    json(response, 200, snapshot);
+    return;
+  }
+
+  if (url.pathname === '/api/v1/uptime/events') {
+    response.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+      'access-control-allow-origin': '*',
+    });
+    response.write('retry: 2000\n\n');
+    const timer = setInterval(() => {
+      response.write(`event: snapshot\ndata: ${JSON.stringify(uptimeBatch())}\n\n`);
+    }, UPTIME_INTERVAL_MS);
+    request.on('close', () => clearInterval(timer));
+    return;
+  }
+
   if (url.pathname === '/api/v1/containers/events') {
     response.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
@@ -248,6 +325,7 @@ const server = createServer((request: IncomingMessage, response: ServerResponse)
 const wss = new WebSocketServer({ noServer: true });
 const logWss = new WebSocketServer({ noServer: true });
 const containerWss = new WebSocketServer({ noServer: true });
+const uptimeWss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
   const { pathname } = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
@@ -257,6 +335,10 @@ server.on('upgrade', (request, socket, head) => {
   }
   if (pathname === '/logs/stream') {
     logWss.handleUpgrade(request, socket, head, (client) => logWss.emit('connection', client, request));
+    return;
+  }
+  if (pathname === '/uptime/stream') {
+    uptimeWss.handleUpgrade(request, socket, head, (client) => uptimeWss.emit('connection', client, request));
     return;
   }
   if (pathname === '/containers/stream') {
@@ -363,6 +445,39 @@ containerWss.on('connection', (socket: WebSocket) => {
   start();
 });
 
+/** Uptime stream: same subscribe/ping protocol, one status page per tick. */
+uptimeWss.on('connection', (socket: WebSocket) => {
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  const start = (intervalMs = UPTIME_INTERVAL_MS) => {
+    if (timer) clearInterval(timer);
+    socket.send(JSON.stringify(uptimeBatch()));
+    timer = setInterval(() => socket.send(JSON.stringify(uptimeBatch())), intervalMs);
+  };
+
+  socket.on('message', (raw) => {
+    try {
+      const message = JSON.parse(raw.toString()) as { type?: string; intervalMs?: number };
+      if (message.type === 'ping') {
+        socket.send('pong');
+        return;
+      }
+      if (message.type === 'subscribe') {
+        start(message.intervalMs ?? UPTIME_INTERVAL_MS);
+        socket.send(JSON.stringify({ type: 'subscribed', stream: 'uptime' }));
+      }
+    } catch {
+      // Ignore malformed frames.
+    }
+  });
+
+  socket.on('close', () => {
+    if (timer) clearInterval(timer);
+  });
+
+  start();
+});
+
 server.listen(PORT, () => {
   const base = `http://localhost:${PORT}`;
   console.log(`[mock-server] listening on ${base}`);
@@ -378,4 +493,8 @@ server.listen(PORT, () => {
   console.log(`  containers (k8s)   : ${base}/api/v1/containers?shape=k8s`);
   console.log(`  containers SSE     : ${base}/api/v1/containers/events`);
   console.log(`  containers WS      : ws://localhost:${PORT}/containers/stream`);
+  console.log(`  uptime (status page) : ${base}/api/v1/uptime`);
+  console.log(`  uptime (statuspage)  : ${base}/api/v1/uptime?shape=statuspage`);
+  console.log(`  uptime SSE           : ${base}/api/v1/uptime/events`);
+  console.log(`  uptime WS            : ws://localhost:${PORT}/uptime/stream`);
 });

@@ -50,6 +50,13 @@ const WIDGETS = {
     defaultSource: 'ws://localhost:4310/containers/stream',
     transport: 'websocket',
   },
+  uptime: {
+    tag: 'uptime-timeline',
+    packageDir: 'uptime-timeline',
+    bundle: 'uptime-timeline.global.js',
+    defaultSource: 'ws://localhost:4310/uptime/stream',
+    transport: 'websocket',
+  },
 };
 
 const widget = WIDGETS[readFlag('widget', 'metrics')] ?? WIDGETS.metrics;
