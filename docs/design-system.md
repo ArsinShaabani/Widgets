@@ -34,6 +34,8 @@ widget.setConfig({
 The dashboard is assembled from named sections; layouts, hit-testing and the `sections` config all
 speak the same ids.
 
+### `<server-monitor>`
+
 | Section | Column | Content | Maps to |
 | --- | --- | --- | --- |
 | `cpuBars` | charts | per-core gradient capsules with a % axis | CPU utilisation per logical core |
@@ -46,9 +48,22 @@ speak the same ids.
 | `dualBars` | host | dual-segment bars with two chips | user/system, used/cache, read/write |
 | `actions` | host | icon row | settings, logs, share, network, location, dashboard |
 
+### `<log-stream>`
+
+| Section | Column | Content | Maps to |
+| --- | --- | --- | --- |
+| `toolbar` | full width | status dot, title, received/buffered/errors/rate counters, action icons, search field | connection + volume at a glance |
+| `filters` | stream column | severity chips with counts, service chips | `LogFilter` (levels, services, query) |
+| `stream` | stream column | virtualised rows: severity rail, index, time, service, message, `×N` repeat badge, trace id | the buffered line window |
+| `severityMix` | side | stacked distribution bar + errors/s | level proportions |
+| `histogram` | side | stacked per-level bars over the rolling window | log volume over time |
+| `services` | side | labelled bars with count/error chips | per-service volume and error share |
+| `detail` | side | level chip, wrapped message, metadata rows, attribute chips | the selected line |
+
 Every section registers hit regions (`cpu-core-3`, `gauge-cpu`, `donut-memory`, `badge-disk`,
-`resource-proc-1138`, `action-logs`, `host-card`, `host-alerts`, …) that drive tooltips, pointer
-cursors, click actions and keyboard traversal.
+`resource-proc-1138`, `action-logs`, `host-card`, `host-alerts`, `row-*`, `filter-level-error`,
+`filter-service-api-gateway`, `bucket-12`, `mix-info`, `service-worker`, `detail-copy`, …) that
+drive tooltips, pointer cursors, click actions and keyboard traversal.
 
 ## Chart vocabulary
 

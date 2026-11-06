@@ -8,7 +8,7 @@ One codebase → web, Windows, Android, iOS. Canvas-rendered, framework-free, ac
 
 <img src="docs/images/server-monitor-dark.png" alt="Server monitor widget — dark theme" width="880" />
 
-<sub>First widget: <code>&lt;server-monitor&gt;</code> — live server resource dashboard. Also available in <a href="docs/images/server-monitor-light.png">light theme</a> and <a href="docs/images/server-monitor-mobile.png">single-column layout</a>.</sub>
+<sub>Widgets: <code>&lt;server-monitor&gt;</code> — live server resource dashboard (<a href="docs/images/server-monitor-light.png">light</a>, <a href="docs/images/server-monitor-mobile.png">single column</a>); <code>&lt;log-stream&gt;</code> — virtualised live log viewer (<a href="docs/images/log-stream-burst.png">incident burst</a>, <a href="docs/images/log-stream-mobile.png">single column</a>).</sub>
 
 </div>
 
@@ -24,7 +24,7 @@ other route — **one widget implementation, four+ host environments**:
 | --- | --- | --- |
 | Data + domain logic | [`@widgets/core`](packages/core) | Node, browser, React Native, native bridges (no DOM access) |
 | Shared canvas kit | [`@widgets/render`](packages/render) | any renderer: geometry, hit-testing, glyphs, primitives, a test canvas double |
-| Widgets (rendering + interaction) | [`@widgets/server-monitor`](packages/server-monitor) | `<server-monitor>` web component, canvas 2D |
+| Widgets (rendering + interaction) | [`@widgets/server-monitor`](packages/server-monitor) · [`@widgets/log-stream`](packages/log-stream) | `<server-monitor>` / `<log-stream>` web components, canvas 2D |
 | Native hosts | [`platforms/`](platforms) | WinUI/WebView2, Android WebView, WKWebView, React Native, Flutter |
 
 Because the visual layer is a **web component painted on canvas inside a WebView**, every host
@@ -33,15 +33,17 @@ layer stays transport-agnostic (`WebSocket`, `SSE`, HTTP polling, or a snapshot 
 
 ## Features
 
+- **Two widgets, one platform** — `<server-monitor>` (CPU / memory / disk / network dashboard) and `<log-stream>` (virtualised live log viewer with severity filtering).
 - **Live by design** — WebSocket, Server-Sent Events, HTTP polling and in-process mock streams behind one interface.
 - **Self-healing connections** — exponential backoff with jitter, heartbeats, visibility-aware polling, control-frame suppression.
-- **Tolerant ingestion** — accepts a canonical snapshot *or* flat/snake_case payloads (`cpu_usage`, `memory_total` …) and refuses control frames that would blank a dashboard.
-- **Real monitoring semantics** — rolling history buffers, per-metric thresholds, health score + letter grade, derived alerts, cross-threshold event emission.
-- **Designed, not default-styled** — a full design-token system (dark + light) mapped from the reference mock-up: gradient capsules, donuts, radial gauges, monotone-cubic area chart, status rings and a host card.
-- **Responsive layout engine** — two-column dashboard at ≥ 720 px, single column below, sections dropped by priority when height is scarce (pure maths, unit-tested).
-- **Accessible & keyboard operable** — canvas exposed via `role="img"` + live region, arrow-key navigation across regions, announced tooltips.
-- **Zero runtime dependencies** — no chart library, no framework, ~76 KB minified IIFE including the data layer.
-- **Tested** — 72 unit tests over transports, normalisation, metrics, geometry, layout, view model, renderer and the element lifecycle (jsdom + a canvas double).
+- **Tolerant ingestion** — accepts canonical snapshots *or* flat/snake_case payloads (`cpu_usage`, `memory_total`, `severity`, `msg`, `container` …) and refuses control frames that would blank a view.
+- **Real monitoring semantics** — rolling history buffers, per-metric thresholds, health score + letter grade, derived alerts, log level/service counters, repeat collapsing and error rate.
+- **Built for volume** — the log list only paints the rows inside the viewport (virtualisation) and the store is bounded, so 100k lines stay smooth.
+- **Designed, not default-styled** — a full design-token system (dark + light) mapped from the reference mock-up: gradient capsules, donuts, radial gauges, monotone-cubic area chart, status rings, severity rails and a host card.
+- **Responsive layout engine** — two columns above the breakpoint, single column below, sections dropped by priority when height is scarce (pure maths, unit-tested).
+- **Accessible & keyboard operable** — canvas exposed via `role="img"`/`role="log"` + live regions, arrow-key navigation, `/` to search, space to pause the tail.
+- **Zero runtime dependencies** — no chart library, no framework, ~76 KB minified IIFE per widget including the data layer.
+- **Tested** — 138 unit tests over transports, normalisation, metrics, log store, geometry, layout, virtualisation, view models, renderers and element lifecycles.
 
 ## Quick start
 
@@ -62,41 +64,51 @@ widget streams synthetic-but-realistic metrics.
 
 ```html
 <script type="module" src="./server-monitor.global.js"></script>
+<server-monitor src="wss://metrics.example.com/stream" transport="websocket" theme="dark"></server-monitor>
 
-<server-monitor
-  src="wss://metrics.example.com/stream"
-  transport="websocket"
-  theme="dark"
-  locale="en"
-></server-monitor>
+<script type="module" src="./log-stream.global.js"></script>
+<log-stream src="wss://logs.example.com/stream" transport="websocket" level="warn"></log-stream>
 ```
 
 ### Use it from code
 
 ```ts
 import { defineServerMonitor } from '@widgets/server-monitor';
-import type { ServerMonitorElement } from '@widgets/server-monitor';
+import { defineLogStream } from '@widgets/log-stream';
 
 defineServerMonitor();
+defineLogStream();
 
-const widget = document.createElement('server-monitor') as ServerMonitorElement;
-widget.style.cssText = 'display:block;width:100%;height:820px';
-widget.setConfig({
+const dashboard = document.createElement('server-monitor');
+dashboard.style.cssText = 'display:block;width:100%;height:820px';
+dashboard.setConfig({
   source: { transport: 'websocket', url: 'wss://metrics.example.com/stream' },
   theme: 'dark',
   thresholds: { cpu: { warning: 65, critical: 85 }, disk: { warning: 78, critical: 90 } },
-  sections: { dualBars: true },
   onAction: (action, payload) => console.log(action, payload),
 });
-document.body.append(widget);
+
+const viewer = document.createElement('log-stream');
+viewer.style.cssText = 'display:block;width:100%;height:640px';
+viewer.setConfig({
+  source: { transport: 'websocket', url: 'wss://logs.example.com/stream' },
+  filters: { level: undefined, levels: [], services: [], query: '', minLevel: 'warn' },
+  follow: true,
+  onError: (error) => console.warn(error),
+});
+
+document.body.append(dashboard, viewer);
 ```
 
-### Push snapshots from a native host
+### Push data from a native host
 
 ```js
-// Inside the WebView, after `server-monitor.global.js` has loaded:
+// Inside the WebView, after the bundle has loaded:
 window.__widgets = document.querySelector('server-monitor');
-window.__widgets.setSnapshot(snapshotFromNative); // same pipeline as a live feed
+window.__widgets.setSnapshot(snapshotFromNative);   // metrics pipeline
+
+const logs = document.querySelector('log-stream');
+logs.appendBatch({ timestamp: Date.now(), entries }); // log pipeline
 ```
 
 ## Repository layout
@@ -106,11 +118,12 @@ packages/
   core/                @widgets/core — contracts, transports, stores, thresholds, formatting, tokens, i18n, source resolution
   render/              @widgets/render — shared canvas kit: geometry, hit regions, glyphs, primitives, test canvas double
   server-monitor/      @widgets/server-monitor — <server-monitor> element, layout engine, canvas renderers
+  log-stream/          @widgets/log-stream — <log-stream> element, virtualised list, filters, histogram, inspector
 apps/
-  mock-server/         synthetic metrics over HTTP / SSE / WebSocket
-  demo/                Vite playground (source switch, theme, locale, section toggles)
+  mock-server/         synthetic metrics + logs over HTTP / SSE / WebSocket
+  demo/                Vite playground (widget tabs, source switch, theme, locale, section toggles)
 platforms/             web · windows · android · ios · react-native · flutter host shells
-scripts/               bundle smoke test for the shipped IIFE artifact
+scripts/               bundle smoke test for the shipped IIFE artifacts
 docs/                  architecture, design system, embedding and widget-authoring guides
 ```
 
@@ -135,12 +148,12 @@ docs/                  architecture, design system, embedding and widget-authori
 ## Roadmap
 
 - [x] `server-monitor` — CPU / memory / disk / network dashboard
-- [ ] `log-stream` — live log tail with severity filters
+- [x] `log-stream` — live log tail with severity filters
   - [x] data layer: `LogEntry` contracts, tolerant normalisation, bounded `LogStore` with level/service counters, de-duplication and a rolling histogram
-  - [ ] widget: virtualised list, severity/service filters, detail panel
+  - [x] widget: virtualised list, severity/service filters, search, detail inspector, stats
 - [ ] `container-grid` — Kubernetes pod / service health cards
 - [ ] `uptime-timeline` — incidents and SLA heatmap
-- [ ] Native renderers (Compose / SwiftUI) reusing `buildViewModel()`
+- [ ] Native renderers (Compose / SwiftUI) reusing `buildViewModel()` / `buildLogViewModel()`
 - [x] Platform work: shared canvas kit extracted to `@widgets/render`, transports and source resolution generalised over any snapshot type
 
 ## License

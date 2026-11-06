@@ -1,0 +1,39 @@
+{
+  "name": "@widgets/log-stream",
+  "version": "0.1.0",
+  "description": "Cross-platform live log stream widget: virtualised canvas list with severity filters, histogram and detail inspector.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/log-stream.global.js",
+  "jsdelivr": "./dist/log-stream.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./auto": {
+      "types": "./dist/auto.d.ts",
+      "import": "./dist/auto.js",
+      "default": "./dist/auto.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@widgets/core": "0.1.0",
+    "@widgets/render": "0.1.0"
+  }
+}

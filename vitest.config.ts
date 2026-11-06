@@ -12,6 +12,7 @@ export default defineConfig({
       '@widgets/render/testing': resolvePath('./packages/render/src/testing/fake-context.ts'),
       '@widgets/render': resolvePath('./packages/render/src/index.ts'),
       '@widgets/server-monitor': resolvePath('./packages/server-monitor/src/index.ts'),
+      '@widgets/log-stream': resolvePath('./packages/log-stream/src/index.ts'),
     },
   },
   test: {
