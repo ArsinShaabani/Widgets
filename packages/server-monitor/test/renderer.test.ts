@@ -8,7 +8,7 @@ import {
   type MetricHistory,
 } from '@widgets/core';
 import { buildViewModel, computeLayout, renderDashboard } from '../src/index';
-import { createFakeContext } from './helpers/fake-ctx';
+import { createFakeContext } from '@widgets/render/testing';
 
 const theme = resolveTheme('dark');
 const t = createTranslator('en');

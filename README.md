@@ -23,6 +23,7 @@ other route — **one widget implementation, four+ host environments**:
 | Layer | Package | Runs on |
 | --- | --- | --- |
 | Data + domain logic | [`@widgets/core`](packages/core) | Node, browser, React Native, native bridges (no DOM access) |
+| Shared canvas kit | [`@widgets/render`](packages/render) | any renderer: geometry, hit-testing, glyphs, primitives, a test canvas double |
 | Widgets (rendering + interaction) | [`@widgets/server-monitor`](packages/server-monitor) | `<server-monitor>` web component, canvas 2D |
 | Native hosts | [`platforms/`](platforms) | WinUI/WebView2, Android WebView, WKWebView, React Native, Flutter |
 
@@ -102,7 +103,8 @@ window.__widgets.setSnapshot(snapshotFromNative); // same pipeline as a live fee
 
 ```
 packages/
-  core/                @widgets/core — contracts, transports, store, thresholds, formatting, tokens, i18n
+  core/                @widgets/core — contracts, transports, stores, thresholds, formatting, tokens, i18n, source resolution
+  render/              @widgets/render — shared canvas kit: geometry, hit regions, glyphs, primitives, test canvas double
   server-monitor/      @widgets/server-monitor — <server-monitor> element, layout engine, canvas renderers
 apps/
   mock-server/         synthetic metrics over HTTP / SSE / WebSocket
@@ -134,9 +136,12 @@ docs/                  architecture, design system, embedding and widget-authori
 
 - [x] `server-monitor` — CPU / memory / disk / network dashboard
 - [ ] `log-stream` — live log tail with severity filters
+  - [x] data layer: `LogEntry` contracts, tolerant normalisation, bounded `LogStore` with level/service counters, de-duplication and a rolling histogram
+  - [ ] widget: virtualised list, severity/service filters, detail panel
 - [ ] `container-grid` — Kubernetes pod / service health cards
 - [ ] `uptime-timeline` — incidents and SLA heatmap
 - [ ] Native renderers (Compose / SwiftUI) reusing `buildViewModel()`
+- [x] Platform work: shared canvas kit extracted to `@widgets/render`, transports and source resolution generalised over any snapshot type
 
 ## License
 

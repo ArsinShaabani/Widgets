@@ -31,6 +31,35 @@ export type {
 
 export { Emitter, type Disposable, type Listener } from './emitter';
 export {
+  LOG_LEVELS,
+  LEVEL_SEVERITY,
+  emptyLogFilter,
+  levelAtLeast,
+  toLogLevel,
+  type LogAttributeValue,
+  type LogBucket,
+  type LogEntry,
+  type LogFilter,
+  type LogLevel,
+  type LogServiceStat,
+  type LogSnapshot,
+  type LogStats,
+} from './log-types';
+export { normalizeLogEntry, normalizeLogSnapshot, toEpochMs } from './log-normalize';
+export { LogStore, type LogStoreEvents, type LogStoreOptions } from './log-store';
+export { createMockLogEntry, createMockLogSnapshot, type MockLogOptions } from './log-mock';
+export {
+  createTransport,
+  isMockSource,
+  isStaticSource,
+  isTransport,
+  StaticPollTransport,
+  type MockSourceDescriptor,
+  type NetworkSourceDescriptor,
+  type SourceOptions,
+  type WidgetSource,
+} from './source';
+export {
   darkTheme,
   lightTheme,
   themes,
@@ -61,7 +90,7 @@ export {
   type ByteFormatOptions,
 } from './format';
 export { WidgetStore, type StoreEvents, type StoreOptions } from './store';
-export { WidgetConnector, type ConnectorEvents } from './connector';
+export { WidgetConnector, type ConnectorEvents, type SnapshotSink } from './connector';
 export { createMockSnapshot, mockTotals, type MockSnapshotOptions } from './mock';
 export { normalizeSnapshot } from './normalize';
 export { createTranslator, translations, en, fa, type I18nKey, type Messages, type Translator } from './i18n';

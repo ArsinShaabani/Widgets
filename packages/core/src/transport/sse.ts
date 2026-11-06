@@ -1,5 +1,6 @@
+import type { WidgetSnapshot } from '../types';
 import { BaseTransport } from './base';
-import { nextBackoff, type BackoffOptions } from './types';
+import { nextBackoff, type BackoffOptions, type SnapshotNormalizer } from './types';
 
 /** Minimal EventSource surface (DOM `EventSource`, `eventsource` package, ...). */
 export interface EventSourceLike {
@@ -12,7 +13,7 @@ export interface EventSourceFactory {
   new (url: string, init?: { withCredentials?: boolean }): EventSourceLike;
 }
 
-export interface SseTransportOptions {
+export interface SseTransportOptions<T = WidgetSnapshot> {
   url: string;
   /** Named SSE event carrying a snapshot (default `message`). */
   eventName?: string;
@@ -20,6 +21,8 @@ export interface SseTransportOptions {
   /** BE implementation (browsers: global `EventSource`; Node: `eventsource`). */
   eventSourceFactory?: EventSourceFactory;
   backoff?: BackoffOptions;
+  /** Widget specific payload mapper (defaults to the server-metrics normaliser). */
+  normalize?: SnapshotNormalizer<T>;
 }
 
 /**
@@ -28,16 +31,16 @@ export interface SseTransportOptions {
  * Ideal for read-only metric streams: a single long-lived HTTP response that the
  * backend can push on its own cadence.
  */
-export class SseTransport extends BaseTransport {
+export class SseTransport<T = WidgetSnapshot> extends BaseTransport<T> {
   readonly kind = 'sse';
   private source: EventSourceLike | null = null;
   private attempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly options: SseTransportOptions;
+  private readonly options: SseTransportOptions<T>;
   private readonly factory: EventSourceFactory;
 
-  constructor(options: SseTransportOptions) {
-    super({ backoff: options.backoff });
+  constructor(options: SseTransportOptions<T>) {
+    super({ backoff: options.backoff, normalize: options.normalize });
     this.options = { eventName: 'message', ...options };
     const impl =
       options.eventSourceFactory ?? (globalThis as { EventSource?: EventSourceFactory }).EventSource;

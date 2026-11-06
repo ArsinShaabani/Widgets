@@ -1,3 +1,4 @@
+import type { LogLevel } from './log-types';
 import type { StatusLevel } from './types';
 
 /**
@@ -35,6 +36,8 @@ export interface ThemeTokens {
   badge: string;
   /** Status colours. */
   status: Record<StatusLevel, string>;
+  /** Log severity colours (log-stream widget, severity rails, legends). */
+  levels: Record<LogLevel, string>;
   /** Soft versions of the status colours for glows/rings. */
   statusSoft: Record<StatusLevel, string>;
 }
@@ -67,6 +70,14 @@ export const darkTheme: ThemeTokens = {
     critical: 'rgba(233, 75, 92, 0.18)',
     unknown: 'rgba(95, 107, 131, 0.18)',
   },
+  levels: {
+    trace: '#6b7794',
+    debug: '#5f8bff',
+    info: '#1fd0c4',
+    warn: '#f5a524',
+    error: '#e94b5c',
+    fatal: '#ff4d6d',
+  },
 };
 
 /** Light variant of the same design language (day mode). */
@@ -97,6 +108,14 @@ export const lightTheme: ThemeTokens = {
     critical: 'rgba(217, 59, 76, 0.16)',
     unknown: 'rgba(152, 162, 184, 0.16)',
   },
+  levels: {
+    trace: '#98a2b8',
+    debug: '#2563eb',
+    info: '#0fa8bc',
+    warn: '#e08b0a',
+    error: '#d93b4c',
+    fatal: '#b81f45',
+  },
 };
 
 export const themes = {
@@ -107,9 +126,10 @@ export const themes = {
 export type ThemeName = keyof typeof themes;
 
 /** Partial token override accepted by every widget config. */
-export type ThemeOverride = Partial<Omit<ThemeTokens, 'status' | 'statusSoft'>> & {
+export type ThemeOverride = Partial<Omit<ThemeTokens, 'status' | 'statusSoft' | 'levels'>> & {
   status?: Partial<Record<StatusLevel, string>>;
   statusSoft?: Partial<Record<StatusLevel, string>>;
+  levels?: Partial<Record<LogLevel, string>>;
 };
 
 /** Resolve a theme name (or a full token set) into tokens, applying overrides. */
@@ -127,6 +147,7 @@ export function resolveTheme(
     areaFill: override.areaFill ?? base.areaFill,
     status: { ...base.status, ...(override.status ?? {}) },
     statusSoft: { ...base.statusSoft, ...(override.statusSoft ?? {}) },
+    levels: { ...base.levels, ...(override.levels ?? {}) },
   };
 }
 

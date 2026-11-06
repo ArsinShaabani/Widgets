@@ -33,6 +33,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@widgets/core": "0.1.0"
+    "@widgets/core": "0.1.0",
+    "@widgets/render": "0.1.0"
   }
 }

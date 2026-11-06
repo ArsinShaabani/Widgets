@@ -1,8 +1,15 @@
 import type { ConnectionState, TransportStatus, WidgetSnapshot } from '../types';
 
-export interface DataTransportEvents {
+/**
+ * Converts a raw payload into a widget's canonical snapshot.
+ * Widgets plug their own normaliser into the transports, so one transport
+ * implementation serves every widget in the collection.
+ */
+export type SnapshotNormalizer<T> = (payload: unknown) => T | null;
+
+export interface DataTransportEvents<T> {
   /** A snapshot was parsed successfully. */
-  snapshot: WidgetSnapshot;
+  snapshot: T;
   /** Connection lifecycle change. */
   status: TransportStatus;
   /** Non-fatal problem (parse failure, transient HTTP error, ...). */
@@ -10,7 +17,7 @@ export interface DataTransportEvents {
 }
 
 /** Common surface implemented by every data source. */
-export interface DataTransport {
+export interface DataTransport<T = WidgetSnapshot> {
   /** Stable id used in logs/diagnostics. */
   readonly kind: string;
   /** Current lifecycle state. */
@@ -20,9 +27,9 @@ export interface DataTransport {
   /** Stop streaming and release every resource. */
   stop(): void;
   /** Subscribe to transport events; returns an unsubscribe function. */
-  subscribe<K extends keyof DataTransportEvents>(
+  subscribe<K extends keyof DataTransportEvents<T>>(
     event: K,
-    listener: (payload: DataTransportEvents[K]) => void,
+    listener: (payload: DataTransportEvents<T>[K]) => void,
   ): () => void;
   /** Optional: ask the source for a one-off refresh (used by the retry button). */
   refresh?(): void;

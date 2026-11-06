@@ -10,7 +10,7 @@ import {
   ringSegmentPath,
   seriesToPoints,
 } from '../src/index';
-import { createFakeContext } from './helpers/fake-ctx';
+import { createFakeContext } from '@widgets/render/testing';
 
 describe('geometry', () => {
   it('maps domains onto ranges and clamps at the edges', () => {

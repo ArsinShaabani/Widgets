@@ -1,6 +1,6 @@
 import type { WidgetSnapshot } from '../types';
 import { BaseTransport } from './base';
-import { nextBackoff, type BackoffOptions } from './types';
+import { nextBackoff, type BackoffOptions, type SnapshotNormalizer } from './types';
 
 /** Minimal surface the transport needs — matches DOM `WebSocket` and `ws`. */
 export interface SocketLike {
@@ -18,7 +18,7 @@ export interface SocketFactory {
   new (url: string, protocols?: string | string[]): SocketLike;
 }
 
-export interface WebSocketTransportOptions {
+export interface WebSocketTransportOptions<T = WidgetSnapshot> {
   url: string;
   /** Subscribe behaviour: `'widgets'` sends a subscribe frame, `'none'` just listens. */
   protocol?: 'widgets' | 'none';
@@ -31,6 +31,8 @@ export interface WebSocketTransportOptions {
   /** Socket implementation (browsers use the global, Node should pass `ws`). */
   socketFactory?: SocketFactory;
   backoff?: BackoffOptions;
+  /** Widget specific payload mapper (defaults to the server-metrics normaliser). */
+  normalize?: SnapshotNormalizer<T>;
 }
 
 const OPEN = 1;
@@ -41,17 +43,17 @@ const OPEN = 1;
  * Reconnects with exponential backoff + jitter, re-sends the subscribe frame on
  * every (re)connect and optionally keeps the link warm with heartbeats.
  */
-export class WebSocketTransport extends BaseTransport {
+export class WebSocketTransport<T = WidgetSnapshot> extends BaseTransport<T> {
   readonly kind = 'websocket';
   private socket: SocketLike | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private attempt = 0;
-  private readonly options: WebSocketTransportOptions;
+  private readonly options: WebSocketTransportOptions<T>;
   private readonly factory: SocketFactory;
 
-  constructor(options: WebSocketTransportOptions) {
-    super({ backoff: options.backoff });
+  constructor(options: WebSocketTransportOptions<T>) {
+    super({ backoff: options.backoff, normalize: options.normalize });
     this.options = { protocol: 'widgets', heartbeatMs: 20_000, ...options };
     const impl = options.socketFactory ?? (globalThis as unknown as { WebSocket?: SocketFactory }).WebSocket;
     if (!impl) throw new Error('[widgets] WebSocketTransport requires a socketFactory on this runtime');

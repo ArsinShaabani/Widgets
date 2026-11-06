@@ -1,6 +1,6 @@
 import { formatPercent, withAlpha, type ThemeTokens } from '@widgets/core';
-import { roundRectPath, type Rect } from '../geometry';
-import type { HitCollector } from '../hit';
+import { roundRectPath, type Rect } from '@widgets/render';
+import type { HitCollector } from '@widgets/render';
 import type { ViewModel } from '../view-model';
 import {
   drawChip,
@@ -10,7 +10,7 @@ import {
   drawRings,
   drawText,
   type Ctx,
-} from './primitives';
+} from '@widgets/render';
 
 /** Sections of the host column: identity card, status badges, resource lists. */
 

@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@widgets/core": ["../core/dist/index.d.ts"]
+      "@widgets/core": ["../core/dist/index.d.ts"],
+      "@widgets/render": ["../render/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

@@ -1,8 +1,8 @@
 import type { WidgetSnapshot } from '../types';
 import { BaseTransport } from './base';
-import { nextBackoff, type BackoffOptions } from './types';
+import { nextBackoff, type BackoffOptions, type SnapshotNormalizer } from './types';
 
-export interface HttpTransportOptions {
+export interface HttpTransportOptions<T = WidgetSnapshot> {
   /** Endpoint returning JSON (canonical snapshot or flat metrics). */
   url: string;
   /** Poll interval in ms (default 2000). */
@@ -22,6 +22,8 @@ export interface HttpTransportOptions {
   /** Pause polling while the document is hidden (default true in browsers). */
   pauseWhenHidden?: boolean;
   backoff?: BackoffOptions;
+  /** Widget specific payload mapper (defaults to the server-metrics normaliser). */
+  normalize?: SnapshotNormalizer<T>;
 }
 
 /**
@@ -30,7 +32,7 @@ export interface HttpTransportOptions {
  * Polls an HTTP endpoint on a fixed cadence and falls back to exponential
  * backoff when the endpoint misbehaves, so a widget never hammers a dead server.
  */
-export class HttpTransport extends BaseTransport {
+export class HttpTransport<T = WidgetSnapshot> extends BaseTransport<T> {
   readonly kind = 'http';
   private timer: ReturnType<typeof setTimeout> | null = null;
   private controller: AbortController | null = null;
@@ -38,12 +40,12 @@ export class HttpTransport extends BaseTransport {
   private readonly options: Required<
     Pick<HttpTransportOptions, 'intervalMs' | 'timeoutMs' | 'credentials' | 'pauseWhenHidden' | 'method'>
   > &
-    HttpTransportOptions;
+    HttpTransportOptions<T>;
   private readonly fetchImpl: typeof fetch;
   private visibilityHandler: (() => void) | null = null;
 
-  constructor(options: HttpTransportOptions) {
-    super({ backoff: options.backoff });
+  constructor(options: HttpTransportOptions<T>) {
+    super({ backoff: options.backoff, normalize: options.normalize });
     this.options = {
       intervalMs: 2000,
       timeoutMs: 8000,
@@ -124,7 +126,7 @@ export class HttpTransport extends BaseTransport {
           : {}),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`.trim());
-      const payload = (await response.json()) as WidgetSnapshot;
+      const payload = (await response.json()) as unknown;
       const snapshot = this.ingest(payload);
       this.attempt = 0;
       if (!snapshot) throw new Error('payload did not contain any recognisable metrics');

@@ -1,34 +1,37 @@
 import { Emitter } from '../emitter';
 import { normalizeSnapshot } from '../normalize';
-import type { WidgetSnapshot } from '../types';
+import type { TransportStatus, WidgetSnapshot } from '../types';
 import {
   type DataTransport,
   type DataTransportEvents,
   type BackoffOptions,
+  type SnapshotNormalizer,
   initialStatus,
   toError,
 } from './types';
 
 /** Shared plumbing for every transport: emitter, status bookkeeping, parsing. */
-export abstract class BaseTransport implements DataTransport {
+export abstract class BaseTransport<T = WidgetSnapshot> implements DataTransport<T> {
   abstract readonly kind: string;
-  protected readonly events = new Emitter<DataTransportEvents>();
+  protected readonly events = new Emitter<DataTransportEvents<T>>();
   protected currentStatus = initialStatus();
   protected stopped = true;
   protected readonly backoff: BackoffOptions;
-  protected readonly thresholds?: import('../types').ThresholdConfig;
+  /** Widget specific payload mapper; defaults to the server-metrics normaliser. */
+  protected readonly normalize: SnapshotNormalizer<T>;
 
-  protected constructor(options: { backoff?: BackoffOptions } = {}) {
+  protected constructor(options: { backoff?: BackoffOptions; normalize?: SnapshotNormalizer<T> } = {}) {
     this.backoff = options.backoff ?? {};
+    this.normalize = options.normalize ?? (normalizeSnapshot as unknown as SnapshotNormalizer<T>);
   }
 
-  get status(): import('../types').TransportStatus {
+  get status(): TransportStatus {
     return this.currentStatus;
   }
 
-  subscribe<K extends keyof DataTransportEvents>(
+  subscribe<K extends keyof DataTransportEvents<T>>(
     event: K,
-    listener: (payload: DataTransportEvents[K]) => void,
+    listener: (payload: DataTransportEvents<T>[K]) => void,
   ): () => void {
     return this.events.on(event, listener);
   }
@@ -40,18 +43,20 @@ export abstract class BaseTransport implements DataTransport {
     this.patchStatus({ state: 'closed' });
   }
 
-  protected patchStatus(patch: Partial<import('../types').TransportStatus>): void {
+  protected patchStatus(patch: Partial<TransportStatus>): void {
     this.currentStatus = { ...this.currentStatus, ...patch };
     this.events.emit('status', this.currentStatus);
   }
 
   /**
-   * Parse + validate an inbound payload. Accepts either a canonical snapshot or
-   * a payload `normalizeSnapshot` understands (flat metrics, exporter shapes...).
+   * Parse + validate an inbound payload through the widget's normaliser.
+   *
+   * Returning `null` from a normaliser (unknown shape, control frame) leaves the
+   * previous snapshot on screen and does not count as a received message.
    */
-  protected ingest(payload: unknown): WidgetSnapshot | null {
+  protected ingest(payload: unknown): T | null {
     try {
-      const snapshot = normalizeSnapshot(payload);
+      const snapshot = this.normalize(payload);
       if (!snapshot) return null;
       this.patchStatus({
         state: 'live',

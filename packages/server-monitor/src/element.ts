@@ -14,9 +14,15 @@ import {
   type Translator,
   type WidgetSnapshot,
 } from '@widgets/core';
-import { createTransport, isStaticSource, resolveConfig, type ServerMonitorConfig, type WidgetSource } from './config';
+import {
+  createServerMonitorTransport,
+  isStaticSource,
+  resolveConfig,
+  type ServerMonitorConfig,
+  type WidgetSource,
+} from './config';
 import { computeLayout, type LayoutResult, type SectionId } from './layout';
-import { findRegion, type HitRegion } from './hit';
+import { findRegion, type HitRegion } from '@widgets/render';
 import { renderDashboard } from './renderer';
 import { buildViewModel, type ViewModel } from './view-model';
 
@@ -338,7 +344,7 @@ export class ServerMonitorElement extends HTMLElementBase() {
       return;
     }
 
-    const transport = createTransport(source, () => this.manualSnapshot);
+    const transport = createServerMonitorTransport(source, () => this.manualSnapshot);
     if (!transport) return;
     this.connector = new WidgetConnector(transport, this.store);
     this.connector.on('snapshot', (snapshot) => {

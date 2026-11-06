@@ -17,13 +17,13 @@
 export { ServerMonitorElement, mockSnapshot } from './element';
 export { defineServerMonitor, type ServerMonitorAttributes } from './define';
 export {
-  createTransport,
+  createServerMonitorTransport,
   defaultConfig,
   isMockSource,
   isStaticSource,
-  isTransport,
   resolveConfig,
   StaticPollTransport,
+  type MockServerSource,
   type ResolvedConfig,
   type ServerMonitorConfig,
   type WidgetSource,
@@ -53,28 +53,9 @@ export {
   type ViewModelInput,
 } from './view-model';
 export { renderDashboard, type RenderOptions, type RenderResult } from './renderer';
-export {
-  createHitCollector,
-  findRegion,
-  hitTest,
-  type HitCollector,
-  type HitRegion,
-} from './hit';
-export {
-  capsulePath,
-  clamp,
-  ellipsize,
-  linearScale,
-  monotoneCubicSegments,
-  niceTicks,
-  polar,
-  ringSegmentPath,
-  roundRectPath,
-  seriesToPoints,
-  TAU,
-  type CubicSegment,
-  type PolarPoint,
-  type Rect,
-} from './geometry';
-export { ICON_PATHS, type IconName } from './icons';
-export { drawPanel, drawText, fontStack, type Ctx } from './draw/primitives';
+
+/**
+ * The canvas kit moved to `@widgets/render` so every widget shares it. These
+ * re-exports keep existing imports working.
+ */
+export * from '@widgets/render';

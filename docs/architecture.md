@@ -16,17 +16,22 @@
 │  │  view-model.ts     snapshot + history → labels, values, colours,     │  │
 │  │                    statuses (pure, unit-tested)                      │  │
 │  │  renderer.ts       frame orchestration + hit regions + tooltips      │  │
-│  │  draw/*            canvas primitives and per-section painters        │  │
+│  │  draw/*            per-section painters built on @widgets/render      │  │
 │  └─────────────────────────────────────────────────────────────────────┘  │
 │                                   ▲                                        │
-│                                   │ WidgetSnapshot + MetricHistory         │
+│                    WidgetSnapshot | LogSnapshot + history                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │ @widgets/render — canvas kit (pure, DOM-free, testable)             │  │
+│  │  geometry · hit regions · glyphs · primitives · fake canvas context │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+│                                   ▲                                        │
 │  ┌─────────────────────────────────────────────────────────────────────┐  │
 │  │ @widgets/core — data layer (no DOM, no framework)                   │  │
-│  │  transport/  Http · WebSocket · SSE · Mock · Static                 │  │
-│  │  normalize   backend payload → canonical snapshot                   │  │
-│  │  store       latest snapshot + rolling history + threshold alerts   │  │
-│  │  thresholds  classification, health score, grades                   │  │
-│  │  theme/format/i18n   tokens, value formatting, translations         │  │
+│  │  source       any source shape → one DataTransport<T>               │  │
+│  │  transport/   Http · WebSocket · SSE · Mock · Static, generic in T  │  │
+│  │  normalize    backend payload → canonical snapshot (metrics, logs)  │  │
+│  │  stores       MetricStore (history + threshold alerts) · LogStore   │  │
+│  │  theme/format/i18n   tokens, formatting, translations               │  │
 │  └─────────────────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```

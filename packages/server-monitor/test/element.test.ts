@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockSnapshot } from '@widgets/core';
 import { ServerMonitorElement, defineServerMonitor, mockSnapshot } from '../src/index';
-import { createFakeContext } from './helpers/fake-ctx';
+import { createFakeContext } from '@widgets/render/testing';
 
 /**
  * Element level tests.

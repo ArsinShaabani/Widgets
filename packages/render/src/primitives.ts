@@ -1,6 +1,6 @@
 import { withAlpha, type StatusLevel, type ThemeTokens } from '@widgets/core';
-import { clamp, roundRectPath, ellipsize, type Rect } from '../geometry';
-import { ICON_PATHS, type IconName } from '../icons';
+import { clamp, roundRectPath, ellipsize, type Rect } from './geometry';
+import { ICON_PATHS, type IconName } from './icons';
 
 /**
  * Low level canvas primitives.
@@ -171,13 +171,19 @@ export interface IconButtonOptions {
   cx: number;
   cy: number;
   radius: number;
-  icon: IconName;
+  /** Shared glyph name, or a custom painter `(ctx, cx, cy) => void` in a 24×24 box. */
+  icon: IconName | IconPainter;
   theme: ThemeTokens;
   /** Emphasised button (host avatar ring, active state). */
   accent?: string;
   /** Fill override; defaults to the raised surface colour. */
   fill?: string;
+  /** Glyph colour override. */
+  iconColor?: string;
 }
+
+/** Custom glyph painter, drawn inside a 24×24 box centred on (0, 0). */
+export type IconPainter = (ctx: CanvasPath, cx: number, cy: number) => void;
 
 /** Circular icon button: ring + glyph, identical in both themes. */
 export function drawIconButton(ctx: Ctx, options: IconButtonOptions): void {
@@ -190,16 +196,17 @@ export function drawIconButton(ctx: Ctx, options: IconButtonOptions): void {
   ctx.lineWidth = accent ? 1.6 : 1;
   ctx.stroke();
 
+  const painter: IconPainter = typeof icon === 'function' ? icon : ICON_PATHS[icon];
   const scale = (radius * 1.05) / 24;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.scale(scale, scale);
-  ctx.strokeStyle = theme.text;
+  ctx.strokeStyle = options.iconColor ?? theme.text;
   ctx.lineWidth = 1.9 / scale;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();
-  ICON_PATHS[icon](ctx, 0, 0);
+  painter(ctx, 0, 0);
   ctx.stroke();
   ctx.restore();
 }

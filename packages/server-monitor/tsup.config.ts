@@ -18,7 +18,7 @@ export default defineConfig([
     clean: true,
     target: 'es2021',
     tsconfig: 'tsconfig.build.json',
-    external: ['@widgets/core'],
+    external: ['@widgets/core', '@widgets/render'],
   },
   {
     entry: { 'server-monitor': 'src/auto.ts' },
@@ -28,6 +28,6 @@ export default defineConfig([
     sourcemap: true,
     target: 'es2019',
     tsconfig: 'tsconfig.build.json',
-    noExternal: ['@widgets/core'],
+    noExternal: ['@widgets/core', '@widgets/render'],
   },
 ]);

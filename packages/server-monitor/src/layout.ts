@@ -1,4 +1,4 @@
-import type { Rect } from './geometry';
+import type { Rect } from '@widgets/render';
 
 /**
  * Layout engine for the server monitor dashboard.

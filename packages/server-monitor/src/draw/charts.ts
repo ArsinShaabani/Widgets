@@ -7,10 +7,10 @@ import {
   seriesToPoints,
   TAU,
   type Rect,
-} from '../geometry';
-import type { HitCollector } from '../hit';
+} from '@widgets/render';
+import type { HitCollector } from '@widgets/render';
 import type { ViewModel } from '../view-model';
-import { barGradient, drawPanel, drawText, traceSmoothPath, type Ctx } from './primitives';
+import { barGradient, drawPanel, drawText, traceSmoothPath, type Ctx } from '@widgets/render';
 
 /** Chart sections of the dashboard: per-core bars, donuts, gauges, network area. */
 

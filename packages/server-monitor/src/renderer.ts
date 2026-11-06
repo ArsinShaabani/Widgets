@@ -1,10 +1,10 @@
 import { resolveTheme, type ThemeName, type ThemeTokens } from '@widgets/core';
 import { drawCpuBars, drawDonuts, drawGauges, drawNetwork } from './draw/charts';
 import { drawActions, drawBadges, drawDualBars, drawHost, drawResourceBars } from './draw/host';
-import { drawStatusDot, drawText, type Ctx } from './draw/primitives';
+import { drawStatusDot, drawText, type Ctx } from '@widgets/render';
 import type { SectionId } from './layout';
 import type { LayoutResult } from './layout';
-import { createHitCollector, type HitRegion } from './hit';
+import { createHitCollector, type HitRegion } from '@widgets/render';
 import type { ViewModel } from './view-model';
 
 /** Renderer: paints a whole frame and reports the interactive regions it drew. */
