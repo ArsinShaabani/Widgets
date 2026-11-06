@@ -47,6 +47,26 @@ export {
 } from './log-types';
 export { normalizeLogEntry, normalizeLogSnapshot, toEpochMs } from './log-normalize';
 export { LogStore, type LogStoreEvents, type LogStoreOptions } from './log-store';
+export { normalizeContainer, normalizeContainerSnapshot, parseQuantity, type QuantityDimension } from './container-normalize';
+export {
+  HEALTH_RANK,
+  emptyContainerFilter,
+  healthFromPhase,
+  toContainerHealth,
+  toContainerPhase,
+  type ClusterSummary,
+  type ContainerFilter,
+  type ContainerHealth,
+  type ContainerInfo,
+  type ContainerPhase,
+  type ContainerSnapshot,
+  type ContainerSpec,
+  type ContainerStats,
+  type ResourceUsage,
+  type WorkloadKind,
+} from './container-types';
+export { ContainerStore, type ContainerStoreEvents, type ContainerStoreOptions } from './container-store';
+export { createMockContainer, createMockContainerSnapshot, type MockContainerOptions } from './container-mock';
 export { createMockLogEntry, createMockLogSnapshot, type MockLogOptions } from './log-mock';
 export {
   createTransport,

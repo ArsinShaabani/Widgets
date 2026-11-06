@@ -78,6 +78,18 @@ export const en = {
   'log.attr': 'Attributes',
   'log.collapse': 'Collapse repeated lines',
   'log.total': 'Total',
+
+  // ── container grid widget ────────────────────────────────────────────────
+  'grid.title': 'Container fleet',
+  'grid.subtitle': 'Pod and service health across the cluster',
+  'grid.containers': 'workloads',
+  'grid.attention': 'Needs attention',
+  'grid.refresh': 'Refresh',
+  'grid.copy': 'Copy state',
+  'grid.empty': 'No workloads match the current filters',
+  'grid.detail': 'Inspector',
+  'grid.detail.empty': 'Select a workload to inspect its containers, image and limits',
+  'grid.noLimit': 'no limit',
 } as const;
 
 export type I18nKey = keyof typeof en;
@@ -131,6 +143,16 @@ export const fa: Messages = {
   'log.repeated': '{count}× تکرار',
   'log.attr': 'ویژگی‌ها',
   'log.total': 'کل',
+  'grid.title': 'ناوگان کانتینر',
+  'grid.subtitle': 'سلامت پادها و سرویس‌ها در کل کلاستر',
+  'grid.containers': 'بارِ کاری',
+  'grid.attention': 'نیازمند بررسی',
+  'grid.refresh': 'به‌روزرسانی',
+  'grid.copy': 'کپی وضعیت',
+  'grid.empty': 'با این فیلترها موردی پیدا نشد',
+  'grid.detail': 'بازرس',
+  'grid.detail.empty': 'یک بارِ کاری را انتخاب کنید تا کانتینرها، ایمیج و محدودیت‌ها را ببینید',
+  'grid.noLimit': 'بدون محدودیت',
 };
 
 const dictionaries: Record<string, Messages> = { en, fa };

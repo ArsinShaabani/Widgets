@@ -22,6 +22,7 @@
           Server monitor
         </button>
         <button class="tab" data-widget="logs" role="tab" aria-selected="false">Log stream</button>
+        <button class="tab" data-widget="containers" role="tab" aria-selected="false">Container grid</button>
       </nav>
     </header>
 
@@ -125,10 +126,70 @@
       </label>
     </section>
 
+
+    <section class="controls" id="controls-containers" hidden>
+      <label>
+        <span>Data source</span>
+        <select id="c-source">
+          <option value="mock" selected>Mock fleet (in-process)</option>
+          <option value="mockIncident">Mock · incident window</option>
+          <option value="ws">WebSocket :4310/containers/stream</option>
+          <option value="sse">Server-Sent Events</option>
+          <option value="http">HTTP snapshots</option>
+          <option value="k8s">HTTP Kubernetes shape</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Theme</span>
+        <select id="c-theme">
+          <option value="dark" selected>Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Columns</span>
+        <select id="c-columns">
+          <option value="auto" selected>Responsive</option>
+          <option value="2">Two columns</option>
+          <option value="1">Single column</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Locale</span>
+        <select id="c-locale">
+          <option value="en" selected>English</option>
+          <option value="fa">فارسی</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Sort</span>
+        <select id="c-sort">
+          <option value="severity" selected>Most severe first</option>
+          <option value="restarts">Most restarts</option>
+          <option value="cpu">Highest CPU</option>
+          <option value="memory">Highest memory</option>
+          <option value="name">Name</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Focus</span>
+        <select id="c-attention">
+          <option value="false" selected>Everything</option>
+          <option value="true">Needs attention only</option>
+        </select>
+      </label>
+    </section>
+
     <main>
       <section class="stage" id="stage">
         <server-monitor id="monitor"></server-monitor>
         <log-stream id="logs" hidden></log-stream>
+        <container-grid id="fleet" hidden></container-grid>
       </section>
 
       <aside class="side">
