@@ -69,6 +69,37 @@ export { ContainerStore, type ContainerStoreEvents, type ContainerStoreOptions }
 export { createMockContainer, createMockContainerSnapshot, type MockContainerOptions } from './container-mock';
 export { createMockLogEntry, createMockLogSnapshot, type MockLogOptions } from './log-mock';
 export {
+  SERVICE_STATES,
+  STATE_RANK,
+  emptyUptimeFilter,
+  stateToSeverity,
+  toIncidentSeverity,
+  toIncidentState,
+  toServiceState,
+  worstState,
+  type IncidentSeverity,
+  type IncidentState,
+  type ServiceState,
+  type UptimeDay,
+  type UptimeFilter,
+  type UptimeIncident,
+  type UptimeIncidentUpdate,
+  type UptimeService,
+  type UptimeSnapshot,
+  type UptimeStats,
+} from './uptime-types';
+export {
+  averageUptime,
+  computeErrorBudgetUsed,
+  normalizeDays,
+  normalizeIncident,
+  normalizeService,
+  normalizeUptimeSnapshot,
+  utcDayStart,
+} from './uptime-normalize';
+export { UptimeStore, type UptimeStoreEvents, type UptimeStoreOptions } from './uptime-store';
+export { createMockUptimeSnapshot, mockWorstState, type MockUptimeOptions } from './uptime-mock';
+export {
   createTransport,
   isMockSource,
   isStaticSource,

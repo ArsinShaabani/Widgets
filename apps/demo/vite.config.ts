@@ -19,6 +19,7 @@ export default defineConfig({
       '@widgets/server-monitor': resolvePath('../../packages/server-monitor/src/index.ts'),
       '@widgets/log-stream': resolvePath('../../packages/log-stream/src/index.ts'),
       '@widgets/container-grid': resolvePath('../../packages/container-grid/src/index.ts'),
+      '@widgets/uptime-timeline': resolvePath('../../packages/uptime-timeline/src/index.ts'),
     },
   },
   build: {

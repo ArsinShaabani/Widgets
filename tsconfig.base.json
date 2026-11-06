@@ -23,6 +23,7 @@
       "@widgets/render": ["packages/render/src/index.ts"],
       "@widgets/log-stream": ["packages/log-stream/src/index.ts"],
       "@widgets/container-grid": ["packages/container-grid/src/index.ts"],
+      "@widgets/uptime-timeline": ["packages/uptime-timeline/src/index.ts"],
       "@widgets/render/testing": ["packages/render/src/testing/fake-context.ts"],
       "@widgets/server-monitor": ["packages/server-monitor/src/index.ts"]
     }
