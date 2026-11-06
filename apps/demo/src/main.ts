@@ -10,32 +10,45 @@ import {
   defineLogStream,
   type LogSectionId,
 } from '@widgets/log-stream';
+import {
+  ContainerGridElement,
+  GRID_SECTIONS,
+  defineContainerGrid,
+  type GridSectionId,
+} from '@widgets/container-grid';
 
 defineServerMonitor();
 defineLogStream();
+defineContainerGrid();
 
 const METRICS_WS = 'ws://localhost:4310/stream';
 const METRICS_HTTP = 'http://localhost:4310/api/v1/server/metrics';
 const LOGS_WS = 'ws://localhost:4310/logs/stream';
 const LOGS_HTTP = 'http://localhost:4310/api/v1/logs';
 const LOGS_SSE = 'http://localhost:4310/api/v1/logs/events';
+const CONTAINERS_WS = 'ws://localhost:4310/containers/stream';
+const CONTAINERS_HTTP = 'http://localhost:4310/api/v1/containers';
+const CONTAINERS_SSE = 'http://localhost:4310/api/v1/containers/events';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const monitor = $<ServerMonitorElement>('monitor');
 const logs = $<LogStreamElement>('logs');
+const fleet = $<ContainerGridElement>('fleet');
 const eventsList = $<HTMLUListElement>('events');
 const toggles = $<HTMLDivElement>('toggles');
 const snippet = $<HTMLElement>('snippet');
 const controlsMetrics = $('controls-metrics');
 const controlsLogs = $('controls-logs');
+const controlsContainers = $('controls-containers');
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('.tab')];
 
-type WidgetKind = 'metrics' | 'logs';
+type WidgetKind = 'metrics' | 'logs' | 'containers';
 let active: WidgetKind = 'metrics';
 
 const metricSections: Partial<Record<SectionId, boolean>> = {};
 const logSections: Partial<Record<LogSectionId, boolean>> = {};
+const containerSections: Partial<Record<GridSectionId, boolean>> = {};
 
 const metricControls = {
   source: $<HTMLSelectElement>('m-source'),
@@ -43,6 +56,15 @@ const metricControls = {
   columns: $<HTMLSelectElement>('m-columns'),
   locale: $<HTMLSelectElement>('m-locale'),
   stress: $<HTMLInputElement>('m-stress'),
+};
+
+const containerControls = {
+  source: $<HTMLSelectElement>('c-source'),
+  theme: $<HTMLSelectElement>('c-theme'),
+  columns: $<HTMLSelectElement>('c-columns'),
+  locale: $<HTMLSelectElement>('c-locale'),
+  sort: $<HTMLSelectElement>('c-sort'),
+  attention: $<HTMLSelectElement>('c-attention'),
 };
 
 const logControls = {
@@ -141,6 +163,44 @@ function applyLogs(): void {
   });
 }
 
+
+// ── Container grid ────────────────────────────────────────────────────────
+
+function containerSource(): Record<string, unknown> {
+  switch (containerControls.source.value) {
+    case 'ws':
+      return { transport: 'websocket', url: CONTAINERS_WS };
+    case 'sse':
+      return { transport: 'sse', url: CONTAINERS_SSE };
+    case 'http':
+      return { transport: 'http', url: CONTAINERS_HTTP, intervalMs: 3000 };
+    case 'k8s':
+      return { transport: 'http', url: `${CONTAINERS_HTTP}?shape=k8s`, intervalMs: 3000 };
+    case 'mockIncident':
+      return { transport: 'mock', intervalMs: 2000, size: 24, incident: true };
+    default:
+      return { transport: 'mock', intervalMs: 2500, size: 24 };
+  }
+}
+
+function applyContainers(): void {
+  fleet.setConfig({
+    source: containerSource() as never,
+    theme: containerControls.theme.value === 'light' ? 'light' : 'dark',
+    locale: containerControls.locale.value,
+    sort: containerControls.sort.value as never,
+    ...(containerControls.columns.value === 'auto'
+      ? {}
+      : { columns: Number(containerControls.columns.value) as 1 | 2 }),
+    filters: { ...fleet.filter, attentionOnly: containerControls.attention.value === 'true' },
+    sections: containerSections,
+    tooltips: true,
+    onAction: (action, payload) =>
+      pushEvent(`grid action · ${action}${payload ? ` · ${JSON.stringify(payload)}` : ''}`),
+    onError: (error) => pushEvent(`grid error · ${error.message}`),
+  });
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 const SNIPPETS: Record<WidgetKind, string> = {
@@ -152,6 +212,15 @@ const SNIPPETS: Record<WidgetKind, string> = {
 
 <script type="module"
   src="./server-monitor.global.js"></script>`,
+  containers: `<container-grid
+  src="ws://localhost:4310/containers/stream"
+  transport="websocket"
+  sort="severity"
+  attention="false"
+></container-grid>
+
+<script type="module"
+  src="./container-grid.global.js"></script>`,
   logs: `<log-stream
   src="ws://localhost:4310/logs/stream"
   transport="websocket"
@@ -165,8 +234,9 @@ const SNIPPETS: Record<WidgetKind, string> = {
 
 function renderSectionToggles(): void {
   toggles.innerHTML = '';
-  const ids: readonly string[] = active === 'metrics' ? ALL_SECTIONS : LOG_SECTIONS;
-  const state = active === 'metrics' ? metricSections : logSections;
+  const ids: readonly string[] =
+    active === 'metrics' ? ALL_SECTIONS : active === 'logs' ? LOG_SECTIONS : GRID_SECTIONS;
+  const state = active === 'metrics' ? metricSections : active === 'logs' ? logSections : containerSections;
   for (const id of ids) {
     const label = document.createElement('label');
     const input = document.createElement('input');
@@ -177,7 +247,8 @@ function renderSectionToggles(): void {
     input.addEventListener('change', () => {
       (state as Record<string, boolean>)[id] = input.checked;
       if (active === 'metrics') applyMetrics();
-      else applyLogs();
+      else if (active === 'logs') applyLogs();
+      else applyContainers();
     });
   }
 }
@@ -191,17 +262,22 @@ function setActive(next: WidgetKind): void {
   }
   controlsMetrics.hidden = next !== 'metrics';
   controlsLogs.hidden = next !== 'logs';
+  controlsContainers.hidden = next !== 'containers';
   monitor.hidden = next !== 'metrics';
   logs.hidden = next !== 'logs';
+  fleet.hidden = next !== 'containers';
   snippet.querySelector('code')!.textContent = SNIPPETS[next];
   renderSectionToggles();
 
   if (next === 'metrics') {
     applyMetrics();
     pushEvent('switched to server-monitor');
-  } else {
+  } else if (next === 'logs') {
     applyLogs();
     pushEvent('switched to log-stream');
+  } else {
+    applyContainers();
+    pushEvent('switched to container-grid');
   }
 }
 
@@ -233,6 +309,15 @@ logs.addEventListener('widget-select', (event) => {
   pushEvent(`logs select · ${entry.service}`);
 });
 
+fleet.addEventListener('widget-snapshot', (event) => {
+  const snapshot = (event as CustomEvent).detail as { containers: unknown[] };
+  pushEvent(`grid · fleet snapshot (${snapshot.containers.length} workloads)`);
+});
+fleet.addEventListener('widget-transition', (event) => {
+  const payload = (event as CustomEvent).detail as { container: { name: string }; from: string; to: string };
+  pushEvent(`grid transition · ${payload.container.name} ${payload.from} → ${payload.to}`);
+});
+
 // ── Control wiring ────────────────────────────────────────────────────────
 
 for (const control of Object.values(metricControls)) {
@@ -246,6 +331,11 @@ metricControls.stress.addEventListener('input', () => {
 for (const control of Object.values(logControls)) {
   control.addEventListener('change', () => {
     if (active === 'logs') applyLogs();
+  });
+}
+for (const control of Object.values(containerControls)) {
+  control.addEventListener('change', () => {
+    if (active === 'containers') applyContainers();
   });
 }
 
@@ -270,7 +360,15 @@ setSelect(logControls.locale, params.get('l-locale'));
 setSelect(logControls.level, params.get('l-level'));
 setSelect(logControls.follow, params.get('l-follow'));
 
-setActive(params.get('widget') === 'logs' ? 'logs' : 'metrics');
+setSelect(containerControls.source, params.get('c-source'));
+setSelect(containerControls.theme, params.get('c-theme'));
+setSelect(containerControls.columns, params.get('c-columns'));
+setSelect(containerControls.locale, params.get('c-locale'));
+setSelect(containerControls.sort, params.get('c-sort'));
+setSelect(containerControls.attention, params.get('c-attention'));
+
+const requested = params.get('widget');
+setActive(requested === 'logs' ? 'logs' : requested === 'containers' ? 'containers' : 'metrics');
 pushEvent('playground ready · pick a data source to stream live data');
 
 

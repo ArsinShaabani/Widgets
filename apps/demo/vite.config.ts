@@ -18,6 +18,7 @@ export default defineConfig({
       '@widgets/render': resolvePath('../../packages/render/src/index.ts'),
       '@widgets/server-monitor': resolvePath('../../packages/server-monitor/src/index.ts'),
       '@widgets/log-stream': resolvePath('../../packages/log-stream/src/index.ts'),
+      '@widgets/container-grid': resolvePath('../../packages/container-grid/src/index.ts'),
     },
   },
   build: {

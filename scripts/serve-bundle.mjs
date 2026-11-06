@@ -43,6 +43,13 @@ const WIDGETS = {
     defaultSource: 'ws://localhost:4310/logs/stream',
     transport: 'websocket',
   },
+  containers: {
+    tag: 'container-grid',
+    packageDir: 'container-grid',
+    bundle: 'container-grid.global.js',
+    defaultSource: 'ws://localhost:4310/containers/stream',
+    transport: 'websocket',
+  },
 };
 
 const widget = WIDGETS[readFlag('widget', 'metrics')] ?? WIDGETS.metrics;

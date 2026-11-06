@@ -13,7 +13,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @widgets/core && npm run build --workspace @widgets/render && npm run build --workspace @widgets/server-monitor && npm run build --workspace @widgets/log-stream",
+    "build": "npm run build --workspace @widgets/core && npm run build --workspace @widgets/render && npm run build --workspace @widgets/server-monitor && npm run build --workspace @widgets/log-stream && npm run build --workspace @widgets/container-grid",
     "typecheck": "tsc -p tsconfig.base.json --noEmit && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",

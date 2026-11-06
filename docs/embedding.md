@@ -108,10 +108,10 @@ Full widget: [`platforms/flutter/server_monitor_widget.dart`](../platforms/flutt
 
 | Situation | Recommendation |
 | --- | --- |
-| Metrics/logs endpoint reachable from the page | `<server-monitor src="wss://…">` / `<log-stream src="wss://…">` — the widget streams. |
-| Mobile app that already holds a token | Keep the token native, call `setSnapshot()` (metrics) or `appendBatch()` (logs) on every push. |
+| Metrics/logs/fleet endpoint reachable from the page | `<server-monitor src="wss://…">` / `<log-stream …>` / `<container-grid …>` — the widget streams. |
+| Mobile app that already holds a token | Keep the token native, call `setSnapshot()` (metrics) or `appendBatch()` (logs, containers) on every push. |
 | Server-rendered page | Render the element, then push the first payload. |
-| Existing agent speaking its own JSON | Point a transport at it — `normalizeSnapshot` / `normalizeLogSnapshot` map common shapes, or subscribe and map yourself. |
+| Existing agent speaking its own JSON | Point a transport at it — `normalizeSnapshot` / `normalizeLogSnapshot` / `normalizeContainerSnapshot` map common shapes (including Kubernetes `items` and quantity strings). |
 | Unit tests / design work | `source: 'mock'` (or omit `source`) → deterministic synthetic stream. |
 
 ## Simulator endpoints
@@ -130,6 +130,10 @@ npm run mock --workspace @widgets/mock-server      # :4310
 | `GET /api/v1/logs?shape=raw` | container-style lines (`severity`, `ts`, `msg`, `container`, `attrs`) |
 | `GET /api/v1/logs/events` | logs over SSE |
 | `WS /logs/stream` | logs stream (subscribe/ping protocol) |
+| `GET /api/v1/containers` | canonical `ContainerSnapshot` |
+| `GET /api/v1/containers?shape=k8s` | Kubernetes `items` shape (`metadata`/`status`/`spec`, quantity strings) |
+| `GET /api/v1/containers/events` | fleet over SSE |
+| `WS /containers/stream` | fleet stream (subscribe/ping protocol) |
 
 ### Canonical payload example
 
@@ -187,9 +191,19 @@ curl -s 'localhost:4310/api/v1/server/metrics?shape=flat'      # flat aliases
 | `selectedId`, `copySelection()`, `clear()` | inspector control |
 | `lineCount`, `viewModel`, `currentLayout`, `hitRegions` | last frame state |
 
-Both elements emit `widget-action`, `widget-error`, `widget-render`; `<server-monitor>` also emits
-`widget-snapshot` / `widget-alert`, and `<log-stream>` emits `widget-snapshot` / `widget-critical` /
-`widget-select`.
+`<container-grid>`:
+
+| Member | Purpose |
+| --- | --- |
+| `setConfig(config)` | patch config: source, theme, locale, columns, sort, filters, sections |
+| `appendBatch(snapshot)` | push a fleet snapshot from a native/JS bridge |
+| `filter` (get/set) | phases, namespaces, query, `attentionOnly` |
+| `selectedId`, `copyState()`, `clear()` | inspector and buffer control |
+| `containerCount`, `viewModel`, `currentLayout`, `hitRegions` | last frame state |
+
+All three elements emit `widget-action`, `widget-error`, `widget-render`; `<server-monitor>` also
+emits `widget-snapshot` / `widget-alert`, `<log-stream>` emits `widget-snapshot` / `widget-critical` /
+`widget-select`, and `<container-grid>` emits `widget-snapshot` / `widget-transition` / `widget-select`.
 
 ## Troubleshooting
 

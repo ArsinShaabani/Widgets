@@ -52,9 +52,10 @@ widget.setSnapshot(snapshotFromNative);
 npm run build
 # → packages/server-monitor/dist/server-monitor.global.js   (IIFE, registers <server-monitor>)
 # → packages/log-stream/dist/log-stream.global.js           (IIFE, registers <log-stream>)
+# → packages/container-grid/dist/container-grid.global.js   (IIFE, registers <container-grid>)
 # → packages/*/dist/auto.js                                 (ESM auto-registration)
 # → packages/*/dist/index.js + index.d.ts                   (bundler entry points)
 ```
 
-Both widgets are independent bundles: a host can embed just one, or both side by side in the same
-WebView (they do not share globals beyond the element registrations).
+Each widget is an independent bundle: a host can embed just one, or all three side by side in the
+same WebView (they share no globals beyond the element registrations).

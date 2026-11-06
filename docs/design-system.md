@@ -60,10 +60,22 @@ speak the same ids.
 | `services` | side | labelled bars with count/error chips | per-service volume and error share |
 | `detail` | side | level chip, wrapped message, metadata rows, attribute chips | the selected line |
 
+### `<container-grid>`
+
+| Section | Column | Content | Maps to |
+| --- | --- | --- | --- |
+| `toolbar` | full width | status dot, title, workloads/running/attention/failed/restarts counters, action icons, search field | fleet state at a glance |
+| `filters` | full width | phase chips with counts, namespace chips with critical markers | `ContainerFilter` (phases, namespaces, query, attention) |
+| `grid` | left | responsive card grid (as many columns as the width allows), virtualised by row | one card per workload |
+| `capacity` | side | used vs limit bars for CPU and memory + top consumers | aggregate resources |
+| `namespaces` | side | per-namespace volume bars with critical counts | namespace balance |
+| `detail` | side | status chip, resource summary, CPU sparkline, metadata rows, label chips | the selected workload |
+
 Every section registers hit regions (`cpu-core-3`, `gauge-cpu`, `donut-memory`, `badge-disk`,
 `resource-proc-1138`, `action-logs`, `host-card`, `host-alerts`, `row-*`, `filter-level-error`,
-`filter-service-api-gateway`, `bucket-12`, `mix-info`, `service-worker`, `detail-copy`, …) that
-drive tooltips, pointer cursors, click actions and keyboard traversal.
+`filter-service-api-gateway`, `bucket-12`, `mix-info`, `service-worker`, `detail-copy`,
+`card-payments/api-7d9f`, `filter-phase-failed`, `filter-namespace-edge`, `namespace-payments`,
+`capacity`, …) that drive tooltips, pointer cursors, click actions and keyboard traversal.
 
 ## Chart vocabulary
 
