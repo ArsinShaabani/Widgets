@@ -108,11 +108,28 @@ Full widget: [`platforms/flutter/server_monitor_widget.dart`](../platforms/flutt
 
 | Situation | Recommendation |
 | --- | --- |
-| Metrics endpoint reachable from the page | `<server-monitor src="wss://…">` — the widget streams. |
-| Mobile app that already holds a token | Keep the token native, call `setSnapshot()` on every poll/push. |
-| Server-rendered page | Render the element, then `setSnapshot()` with the first payload. |
-| Existing agent speaking its own JSON | Point a transport at it — `normalizeSnapshot` maps common shapes, or subscribe and map yourself. |
+| Metrics/logs endpoint reachable from the page | `<server-monitor src="wss://…">` / `<log-stream src="wss://…">` — the widget streams. |
+| Mobile app that already holds a token | Keep the token native, call `setSnapshot()` (metrics) or `appendBatch()` (logs) on every push. |
+| Server-rendered page | Render the element, then push the first payload. |
+| Existing agent speaking its own JSON | Point a transport at it — `normalizeSnapshot` / `normalizeLogSnapshot` map common shapes, or subscribe and map yourself. |
 | Unit tests / design work | `source: 'mock'` (or omit `source`) → deterministic synthetic stream. |
+
+## Simulator endpoints
+
+```bash
+npm run mock --workspace @widgets/mock-server      # :4310
+```
+
+| Endpoint | Shape |
+| --- | --- |
+| `GET /api/v1/server/metrics` | canonical `WidgetSnapshot` |
+| `GET /api/v1/server/metrics?shape=flat` | flat snapshot (`cpu_usage`, `memory_total`, …) |
+| `GET /api/v1/server/events` | metrics over SSE |
+| `WS /stream` | metrics stream (subscribe/ping protocol) |
+| `GET /api/v1/logs` | canonical `LogSnapshot` batch |
+| `GET /api/v1/logs?shape=raw` | container-style lines (`severity`, `ts`, `msg`, `container`, `attrs`) |
+| `GET /api/v1/logs/events` | logs over SSE |
+| `WS /logs/stream` | logs stream (subscribe/ping protocol) |
 
 ### Canonical payload example
 
@@ -149,18 +166,30 @@ curl -s 'localhost:4310/api/v1/server/metrics?shape=flat'      # flat aliases
 | `widget-error` | `Error` | the transport failed (also surfaced through `onError`) |
 | `widget-render` | `{ regions, viewModel, layout }` | a frame was painted (host mirroring / tests) |
 
-## Public API of the element
+## Public API of the elements
+
+`<server-monitor>`:
 
 | Member | Purpose |
 | --- | --- |
 | `setConfig(config)` | patch config: source, theme, locale, columns, thresholds, sections, callbacks |
-| `setSnapshot(snapshot)` | push a snapshot from a native/JS bridge |
-| `refresh()` | re-poll / re-subscribe the active transport |
-| `stop()` / `start()` | detach / reattach the data source (background lifecycle) |
-| `paint()` | force a synchronous repaint (after a container resize) |
-| `snapshot` | latest snapshot, or `null` |
-| `viewModel` / `currentLayout` / `hitRegions` | last frame's model, layout and interactive regions |
-| `hostStatus` | `ok` / `warning` / `critical` / `unknown` |
+| `setSnapshot(snapshot)` | push a metrics snapshot from a native/JS bridge |
+| `refresh()` / `stop()` / `start()` / `paint()` | transport control and forced repaint |
+| `snapshot`, `viewModel`, `currentLayout`, `hitRegions`, `hostStatus` | last frame state |
+
+`<log-stream>`:
+
+| Member | Purpose |
+| --- | --- |
+| `setConfig(config)` | patch config: source, theme, locale, columns, filters, follow, sections |
+| `appendBatch(snapshot)` / `appendLine(entry)` | push log lines from a native/JS bridge |
+| `filter` (get/set) | read or update the severity/service/query filter |
+| `selectedId`, `copySelection()`, `clear()` | inspector control |
+| `lineCount`, `viewModel`, `currentLayout`, `hitRegions` | last frame state |
+
+Both elements emit `widget-action`, `widget-error`, `widget-render`; `<server-monitor>` also emits
+`widget-snapshot` / `widget-alert`, and `<log-stream>` emits `widget-snapshot` / `widget-critical` /
+`widget-select`.
 
 ## Troubleshooting
 

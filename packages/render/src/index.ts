@@ -57,6 +57,7 @@ export {
   fontStack,
   setFont,
   traceSmoothPath,
+  wrapText,
   type Ctx,
   type IconButtonOptions,
   type IconPainter,

@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@widgets/core": "0.1.0",
-    "@widgets/server-monitor": "0.1.0"
+    "@widgets/server-monitor": "0.1.0",
+    "@widgets/log-stream": "0.1.0"
   },
   "devDependencies": {
     "vite": "^6.0.7"

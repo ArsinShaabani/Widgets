@@ -14,15 +14,17 @@
  * demo, the unit tests and this server all agree on the data shape.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createMockSnapshot, type WidgetSnapshot } from '@widgets/core';
+import { createMockLogSnapshot, createMockSnapshot, type LogSnapshot, type WidgetSnapshot } from '@widgets/core';
 import { WebSocketServer, type WebSocket } from 'ws';
 
 const PORT = Number(process.env.PORT ?? 4310);
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 1000);
+const LOG_INTERVAL_MS = Number(process.env.LOG_INTERVAL_MS ?? 1200);
 const HOSTNAME = process.env.HOSTNAME_LABEL ?? 'prod-edge-01';
 const CPU_BASELINE = Number(process.env.CPU_BASELINE ?? 52);
 
 let tick = 0;
+let logTick = 0;
 
 /** Full canonical snapshot, refreshed on the server clock. */
 function snapshot(): WidgetSnapshot {
@@ -36,7 +38,18 @@ function snapshot(): WidgetSnapshot {
   });
 }
 
-/** Deliberately "ugly" backend shape to prove the alias mapping works. */
+/** A batch of synthetic log lines. */
+function logBatch(count = 5): LogSnapshot {
+  logTick += 1;
+  return createMockLogSnapshot({
+    seed: 7,
+    hostname: HOSTNAME,
+    count,
+    elapsedSeconds: logTick * (LOG_INTERVAL_MS / 1000),
+  });
+}
+
+/** Deliberately "ugly" backend shapes to prove the normalisers work. */
 function flatPayload(snap: WidgetSnapshot) {
   return {
     data: {
@@ -75,6 +88,19 @@ function flatPayload(snap: WidgetSnapshot) {
   };
 }
 
+/** Container-style log lines (`severity`, `ts`, `msg`) exercised by `?shape=raw`. */
+function rawLogLines(count = 20): Array<Record<string, unknown>> {
+  const batch = logBatch(count);
+  return batch.entries.map((entry) => ({
+    severity: entry.level,
+    ts: entry.timestamp,
+    msg: entry.message,
+    container: entry.service,
+    host: entry.host,
+    attrs: { region: 'eu-central-1', attempt: 1 },
+  }));
+}
+
 function json(response: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   response.writeHead(status, {
@@ -100,6 +126,26 @@ const server = createServer((request: IncomingMessage, response: ServerResponse)
     return;
   }
 
+  if (url.pathname === '/api/v1/logs') {
+    json(response, 200, url.searchParams.get('shape') === 'raw' ? { logs: rawLogLines(25) } : logBatch(25));
+    return;
+  }
+
+  if (url.pathname === '/api/v1/logs/events') {
+    response.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
+      'access-control-allow-origin': '*',
+    });
+    response.write('retry: 2000\n\n');
+    const timer = setInterval(() => {
+      response.write(`event: snapshot\ndata: ${JSON.stringify(logBatch())}\n\n`);
+    }, LOG_INTERVAL_MS);
+    request.on('close', () => clearInterval(timer));
+    return;
+  }
+
   if (url.pathname === '/api/v1/server/events') {
     response.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
@@ -115,10 +161,42 @@ const server = createServer((request: IncomingMessage, response: ServerResponse)
     return;
   }
 
-  json(response, 404, { error: 'not found', endpoints: ['/api/v1/server/metrics', '/api/v1/server/events', '/stream', '/health'] });
+  json(response, 404, {
+    error: 'not found',
+    endpoints: [
+      '/api/v1/server/metrics',
+      '/api/v1/server/events',
+      '/stream',
+      '/api/v1/logs',
+      '/api/v1/logs/events',
+      '/logs/stream',
+      '/health',
+    ],
+  });
 });
 
-const wss = new WebSocketServer({ server, path: '/stream' });
+/**
+ * One upgrade handler for both streams.
+ *
+ * Two `WebSocketServer` instances attached to the same HTTP server would fight
+ * over the `upgrade` event (the first one aborts handshakes whose path it does
+ * not own), so paths are routed manually instead.
+ */
+const wss = new WebSocketServer({ noServer: true });
+const logWss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  const { pathname } = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+  if (pathname === '/stream') {
+    wss.handleUpgrade(request, socket, head, (client) => wss.emit('connection', client, request));
+    return;
+  }
+  if (pathname === '/logs/stream') {
+    logWss.handleUpgrade(request, socket, head, (client) => logWss.emit('connection', client, request));
+    return;
+  }
+  socket.destroy();
+});
 
 wss.on('connection', (socket: WebSocket) => {
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -149,7 +227,38 @@ wss.on('connection', (socket: WebSocket) => {
     if (timer) clearInterval(timer);
   });
 
-  // Push the first frame immediately so the widget paints without waiting.
+  start();
+});
+
+logWss.on('connection', (socket: WebSocket) => {
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  const start = (intervalMs = LOG_INTERVAL_MS) => {
+    if (timer) clearInterval(timer);
+    socket.send(JSON.stringify(logBatch(8)));
+    timer = setInterval(() => socket.send(JSON.stringify(logBatch())), intervalMs);
+  };
+
+  socket.on('message', (raw) => {
+    try {
+      const message = JSON.parse(raw.toString()) as { type?: string; intervalMs?: number };
+      if (message.type === 'ping') {
+        socket.send('pong');
+        return;
+      }
+      if (message.type === 'subscribe') {
+        start(message.intervalMs ?? LOG_INTERVAL_MS);
+        socket.send(JSON.stringify({ type: 'subscribed', stream: 'logs' }));
+      }
+    } catch {
+      // Ignore malformed frames.
+    }
+  });
+
+  socket.on('close', () => {
+    if (timer) clearInterval(timer);
+  });
+
   start();
 });
 
@@ -158,6 +267,10 @@ server.listen(PORT, () => {
   console.log(`[mock-server] listening on ${base}`);
   console.log(`  metrics (snapshot) : ${base}/api/v1/server/metrics`);
   console.log(`  metrics (flat)     : ${base}/api/v1/server/metrics?shape=flat`);
-  console.log(`  SSE stream         : ${base}/api/v1/server/events`);
-  console.log(`  WebSocket stream   : ws://localhost:${PORT}/stream`);
+  console.log(`  metrics SSE        : ${base}/api/v1/server/events`);
+  console.log(`  metrics WebSocket  : ws://localhost:${PORT}/stream`);
+  console.log(`  logs (batch)       : ${base}/api/v1/logs`);
+  console.log(`  logs (raw lines)   : ${base}/api/v1/logs?shape=raw`);
+  console.log(`  logs SSE           : ${base}/api/v1/logs/events`);
+  console.log(`  logs WebSocket     : ws://localhost:${PORT}/logs/stream`);
 });

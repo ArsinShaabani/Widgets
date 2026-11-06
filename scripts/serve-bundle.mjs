@@ -2,12 +2,12 @@
 /**
  * Bundle smoke test.
  *
- * Serves the *shipped* IIFE bundle (`dist/server-monitor.global.js`) with a tiny
- * HTML harness so the exact artifact consumed by WebView hosts can be verified
- * in a real browser:
+ * Serves a *shipped* IIFE bundle with a tiny HTML harness, so the exact artifact
+ * consumed by WebView hosts can be verified in a real browser:
  *
- *   node scripts/serve-bundle.mjs            # http://127.0.0.1:4320
- *   node scripts/serve-bundle.mjs --port 5000 --source ws://localhost:4310/stream
+ *   node scripts/serve-bundle.mjs                        # metrics bundle on :4320
+ *   node scripts/serve-bundle.mjs --widget logs --port 4321
+ *   node scripts/serve-bundle.mjs --source ws://localhost:4310/stream --theme light
  *
  * The harness exposes `window.__widgets` and forwards widget events to the
  * console, which makes it usable both for manual inspection and for headless
@@ -19,8 +19,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const packageRoot = path.resolve(here, '..', 'packages', 'server-monitor');
-const bundlePath = path.join(packageRoot, 'dist', 'server-monitor.global.js');
+const root = path.resolve(here, '..');
 
 const args = process.argv.slice(2);
 const readFlag = (name, fallback) => {
@@ -28,10 +27,31 @@ const readFlag = (name, fallback) => {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 
+/** Widget registry: tag name, package folder, bundle file and default source. */
+const WIDGETS = {
+  metrics: {
+    tag: 'server-monitor',
+    packageDir: 'server-monitor',
+    bundle: 'server-monitor.global.js',
+    defaultSource: 'ws://localhost:4310/stream',
+    transport: 'websocket',
+  },
+  logs: {
+    tag: 'log-stream',
+    packageDir: 'log-stream',
+    bundle: 'log-stream.global.js',
+    defaultSource: 'ws://localhost:4310/logs/stream',
+    transport: 'websocket',
+  },
+};
+
+const widget = WIDGETS[readFlag('widget', 'metrics')] ?? WIDGETS.metrics;
+const packageRoot = path.join(root, 'packages', widget.packageDir);
 const port = Number(readFlag('port', process.env.PORT ?? 4320));
-const source = readFlag('source', process.env.SOURCE ?? 'ws://localhost:4310/stream');
+const source = readFlag('source', process.env.SOURCE ?? widget.defaultSource);
 const theme = readFlag('theme', 'dark');
 const locale = readFlag('locale', 'en');
+const extraConfig = readFlag('config', '');
 
 function harness() {
   return `<!doctype html>
@@ -39,31 +59,29 @@ function harness() {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Widgets · bundle smoke test</title>
+    <title>Widgets · bundle smoke test (${widget.tag})</title>
     <style>
       html, body { margin: 0; height: 100%; background: #101725; color: #eef1f7;
         font-family: Inter, "Segoe UI", system-ui, sans-serif; }
-      server-monitor { display: block; width: 100vw; height: 100vh; }
+      ${widget.tag} { display: block; width: 100vw; height: 100vh; }
     </style>
   </head>
   <body>
-    <server-monitor id="monitor"></server-monitor>
-    <script src="/server-monitor.global.js"></script>
+    <${widget.tag} id="widget"></${widget.tag}>
+    <script src="/${widget.bundle}"></script>
     <script>
       // The IIFE self-registers the element on load.
-      customElements.whenDefined('server-monitor').then(() => {
-        const widget = document.getElementById('monitor');
-        window.__widgets = widget;
-        widget.setConfig({
-          source: { transport: 'websocket', url: ${JSON.stringify(source)} },
+      customElements.whenDefined('${widget.tag}').then(() => {
+        const element = document.getElementById('widget');
+        window.__widgets = element;
+        element.setConfig(Object.assign({
+          source: { transport: '${widget.transport}', url: ${JSON.stringify(source)} },
           theme: ${JSON.stringify(theme)},
           locale: ${JSON.stringify(locale)}
-        });
-        widget.addEventListener('widget-snapshot', (event) => {
-          document.title = 'live · ' + event.detail.host.name;
-        });
-        widget.addEventListener('widget-action', (event) => console.log('action', event.detail));
-        widget.addEventListener('widget-error', (event) => console.error('error', event.detail));
+        }, ${extraConfig || '{}'}));
+        element.addEventListener('widget-snapshot', () => { document.title = 'live'; });
+        element.addEventListener('widget-action', (event) => console.log('action', event.detail));
+        element.addEventListener('widget-error', (event) => console.error('error', event.detail));
       });
     </script>
   </body>
@@ -84,7 +102,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (url.pathname === '/server-monitor.global.js' || url.pathname === '/server-monitor.global.js.map') {
+  if (url.pathname.startsWith('/') && url.pathname.length > 1) {
     try {
       const body = await readFile(path.join(packageRoot, 'dist', path.basename(url.pathname)));
       response.writeHead(200, {
@@ -94,7 +112,9 @@ const server = createServer(async (request, response) => {
       response.end(body);
     } catch (error) {
       response.writeHead(404, { 'content-type': 'text/plain' });
-      response.end(`bundle not found — run: npm run build --workspace @widgets/server-monitor\n${error.message}`);
+      response.end(
+        `bundle not found — run: npm run build --workspace @widgets/${widget.packageDir}\n${error.message}`,
+      );
     }
     return;
   }
@@ -104,7 +124,8 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, '127.0.0.1', () => {
-  console.log(`[bundle-smoke] http://127.0.0.1:${port}  (source: ${source}, theme: ${theme})`);
-  console.log('[bundle-smoke] screenshot: chromium --headless=new --screenshot=shot.png \\');
+  console.log(`[bundle-smoke] http://127.0.0.1:${port}  (${widget.tag}, source: ${source}, theme: ${theme})`);
+  console.log(`[bundle-smoke] screenshot: chromium --headless=new --screenshot=shot.png \\`);
   console.log(`                             --virtual-time-budget=15000 http://127.0.0.1:${port}`);
 });
+

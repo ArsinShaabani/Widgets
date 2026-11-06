@@ -255,3 +255,52 @@ export function traceSmoothPath(
   }
 }
 
+/**
+ * Greedy word wrap for multi-line text blocks (log messages, descriptions).
+ * Words longer than the line box are hard-split so nothing overflows.
+ */
+export function wrapText(
+  ctx: Ctx,
+  text: string,
+  maxWidth: number,
+  options: { maxLines?: number; size?: number; weight?: number | string } = {},
+): string[] {
+  if (!text) return [];
+  const maxLines = options.maxLines ?? Number.POSITIVE_INFINITY;
+  setFont(ctx, { size: options.size ?? 12, weight: options.weight ?? 500 });
+  const lines: string[] = [];
+  const paragraphs = text.split('\n');
+
+  for (const paragraph of paragraphs) {
+    if (lines.length >= maxLines) break;
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
+    }
+    let current = '';
+    for (const word of words) {
+      const candidate = current.length === 0 ? word : `${current} ${word}`;
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        current = candidate;
+        continue;
+      }
+      if (current.length > 0) lines.push(current);
+      if (lines.length >= maxLines) break;
+      // Hard-split a single word that cannot fit on its own line.
+      let piece = word;
+      while (ctx.measureText(piece).width > maxWidth && piece.length > 1) {
+        let cut = piece.length - 1;
+        while (cut > 1 && ctx.measureText(`${piece.slice(0, cut)}…`).width > maxWidth) cut -= 1;
+        lines.push(`${piece.slice(0, cut)}…`);
+        piece = piece.slice(cut);
+        if (lines.length >= maxLines) break;
+      }
+      current = piece;
+    }
+    if (current.length > 0 && lines.length < maxLines) lines.push(current);
+  }
+
+  return lines;
+}
+
