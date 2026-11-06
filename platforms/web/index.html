@@ -1,0 +1,63 @@
+<!doctype html>
+<!--
+  Web host — the simplest shape of a widget consumer.
+  Serve this file next to `server-monitor.global.js` (built with
+  `npm run build --workspace @widgets/server-monitor`).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widgets · web host</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #101725; color: #eef1f7; font-family: system-ui, sans-serif; }
+      #monitor { display: block; width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <!--
+      Attributes cover the common cases:
+        src        metrics endpoint (ws://, wss://, http(s)://, …/events)
+        transport  auto | http | websocket | sse
+        theme      dark | light
+        columns    1 | 2
+        locale     en | fa | any locale you registered with `messages`
+        interval   http poll interval in ms
+    -->
+    <server-monitor
+      id="monitor"
+      src="wss://metrics.example.com/stream"
+      transport="websocket"
+      theme="dark"
+      locale="en"
+      title="Edge fleet"
+    ></server-monitor>
+
+    <script type="module">
+      // The bundle self-registers `<server-monitor>` on load.
+      // import './server-monitor.global.js';
+
+      const widget = document.getElementById('monitor');
+
+      // Wait for the element to upgrade before configuring it.
+      await customElements.whenDefined('server-monitor');
+
+      widget.setConfig({
+        source: { transport: 'websocket', url: 'wss://metrics.example.com/stream' },
+        theme: 'dark',
+        locale: 'en',
+        thresholds: { cpu: { warning: 65, critical: 85 }, disk: { warning: 78, critical: 90 } },
+        sections: { dualBars: true, actions: true },
+        onAction: (action, payload) => {
+          // Route dashboard affordances to your own UI/routing.
+          console.log('widget action', action, payload);
+        },
+        onError: (error) => console.warn('widget transport error', error),
+      });
+
+      // Or push snapshots yourself (server-rendered page, service worker cache, …):
+      // widget.setSnapshot(snapshot);
+    </script>
+  </body>
+</html>

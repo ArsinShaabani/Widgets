@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Widgets · Server Monitor</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <h1>Server Monitor</h1>
+          <p>Cross-platform widget · web · Windows · Android · iOS</p>
+        </div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Demo controls">
+        <label>
+          <span>Data source</span>
+          <select id="source">
+            <option value="mock" selected>Mock (in-process)</option>
+            <option value="ws">WebSocket :4310</option>
+            <option value="sse">Server-Sent Events</option>
+            <option value="http">HTTP polling</option>
+            <option value="flat">HTTP (flat payload)</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Theme</span>
+          <select id="theme">
+            <option value="dark" selected>Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Columns</span>
+          <select id="columns">
+            <option value="auto" selected>Responsive</option>
+            <option value="2">Two columns</option>
+            <option value="1">Single column</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Locale</span>
+          <select id="locale">
+            <option value="en" selected>English</option>
+            <option value="fa">فارسی</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Stress</span>
+          <input id="stress" type="range" min="10" max="95" value="52" step="1" />
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="stage" id="stage">
+        <server-monitor id="monitor"></server-monitor>
+      </section>
+
+      <aside class="side">
+        <h2>Live events</h2>
+        <ul id="events" class="events"></ul>
+
+        <h2>Embed it</h2>
+        <pre class="code"><code>&lt;server-monitor
+  src="ws://localhost:4310/stream"
+  transport="websocket"
+  theme="dark"
+&gt;&lt;/server-monitor&gt;
+
+&lt;script type="module"
+  src="./server-monitor.global.js"&gt;&lt;/script&gt;</code></pre>
+
+        <h2>Sections</h2>
+        <div class="toggles" id="toggles"></div>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

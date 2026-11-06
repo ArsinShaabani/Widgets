@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Minimal project file for the WebView2 host.
+
+    Create the app shell with:
+      dotnet new winui -o Widgets.ServerMonitor
+      dotnet add package Microsoft.Web.WebView2
+    then drop ServerMonitorHost.xaml(.cs) in and copy the built web assets:
+      <None Include="packages/server-monitor/dist/server-monitor.global.js"
+            Link="web/server-monitor.global.js" CopyToOutputDirectory="PreserveNewest" />
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWinUI>true</UseWinUI>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Widgets.ServerMonitor.WinUI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.240923002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="web\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
