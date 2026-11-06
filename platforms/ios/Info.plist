@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- The widget itself only reads local bundle assets; TLS is enforced. -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <!-- Development only: an exception domain for a local mock server.
+         Remove for App Store submissions. -->
+    <key>NSExceptionDomains</key>
+    <dict>
+      <key>localhost</key>
+      <dict>
+        <key>NSExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+      </dict>
+    </dict>
+  </dict>
+
+  <!-- Background refresh keeps the dashboard warm when the app is suspended. -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>fetch</string>
+  </array>
+
+  <key>UIViewControllerBasedStatusBarAppearance</key>
+  <true/>
+</dict>
+</plist>

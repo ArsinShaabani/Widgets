@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  TLS-only by default; the debug override lets a local ws:// mock server through.
+  Wire it up in AndroidManifest.xml:
+    <application android:networkSecurityConfig="@xml/network_security_config" … >
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+
+  <debug-overrides cleartextTrafficPermitted="true">
+    <domain-config cleartextTrafficPermitted="true">
+      <domain includeSubdomains="false">localhost</domain>
+      <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+  </debug-overrides>
+</network-security-config>

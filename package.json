@@ -1,0 +1,32 @@
+{
+  "name": "widgets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-platform widget collection (web / Windows / Android / iOS) that reads live data from the network.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @widgets/core && npm run build --workspace @widgets/server-monitor",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit && npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "mock": "npm run start --workspace @widgets/mock-server",
+    "demo": "npm run dev --workspace @widgets/demo",
+    "dev": "concurrently -n mock,demo -c magenta,cyan \"npm:mock\" \"npm:demo\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.2",
+    "jsdom": "^25.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
